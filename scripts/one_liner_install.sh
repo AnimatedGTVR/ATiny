@@ -1,37 +1,38 @@
-#!/usr/bin/env bash
+ #!/usr/bin/env bash
 set -euo pipefail
 
-# ------------------------------------------
-# ATiny Installer v1
-# ------------------------------------------
+# ATiny One-Liner Installer v1
 
-# Runtime location
 ATINY_PREFIX="${ATINY_PREFIX:-$HOME/.atiny}"
 BIN_DIR="$ATINY_PREFIX/bin"
 LOG_DIR="$ATINY_PREFIX/logs"
 
-# Repo location (assume script is in repo root)
-HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 echo "[ATiny] Installing to $ATINY_PREFIX ..."
 
-# Create folders
 mkdir -p "$BIN_DIR" "$LOG_DIR"
 
-# Copy core ATiny script
-cp -f "$HERE/src/atiny" "$BIN_DIR/atiny"
+# Clone or update repo
+if [ -d "$ATINY_PREFIX/repo" ]; then
+    echo "[ATiny] Repo exists, updating..."
+    cd "$ATINY_PREFIX/repo"
+    git pull --rebase origin main || true
+else
+    git clone https://github.com/AnimatedGTVR/ATiny.git "$ATINY_PREFIX/repo"
+    cd "$ATINY_PREFIX/repo"
+fi
+
+# Copy core script
+cp -f src/atiny "$BIN_DIR/atiny"
 chmod +x "$BIN_DIR/atiny"
 
-# Create command symlinks
+# Create symlinks
 for c in ainstall finstall sinstall term fterm sterm search fsearch ssearch supdate list run start helptiny mantiny; do
     ln -sf "$BIN_DIR/atiny" "$BIN_DIR/$c"
 done
 
-# Add ~/.atiny/bin to PATH safely
+# Add PATH to shell rc safely
 SHELL_RC="$HOME/.bashrc"
-if [ -n "$ZSH_VERSION" ]; then
-    SHELL_RC="$HOME/.zshrc"
-fi
+if [ -n "$ZSH_VERSION" ]; then SHELL_RC="$HOME/.zshrc"; fi
 
 if ! grep -q "$BIN_DIR" "$SHELL_RC" 2>/dev/null; then
     echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$SHELL_RC"
@@ -39,4 +40,4 @@ if ! grep -q "$BIN_DIR" "$SHELL_RC" 2>/dev/null; then
     echo "[ATiny] Restart terminal or run: source $SHELL_RC"
 fi
 
-echo "[ATiny] Installation complete!"
+echo "[ATiny] ATiny v1 installed successfully! Test with: atiny --version"
