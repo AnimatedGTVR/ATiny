@@ -1,0 +1,14 @@
+Firefox	Internet	flatpak	org.mozilla.firefox	Web browser
+Firefox	Internet	snap	firefox	Web browser
+Visual Studio Code	Development	flatpak	com.visualstudio.code	Code editor
+Spotify	Media	flatpak	com.spotify.Client	Music streaming
+Discord	Communication	flatpak	com.discordapp.Discord	Chat for communities
+Steam	Gaming	flatpak	com.valvesoftware.Steam	Game launcher
+VLC	Media	flatpak	org.videolan.VLC	Media player
+LibreOffice	Productivity	flatpak	org.libreoffice.LibreOffice	Office suite
+GIMP	Creative	flatpak	org.gimp.GIMP	Image editor
+Blender	Creative	flatpak	org.blender.Blender	3D creation suite
+OBS Studio	Creative	flatpak	com.obsproject.Studio	Recording and streaming
+Musescore	Creative	flatpak	org.musescore.MuseScore	Sheet music editor
+Postman	Development	snap	postman	API platform
+htop	System	apt	htop	Process viewer

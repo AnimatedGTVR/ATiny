@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Never commit runtime install folders
 .atiny/
 logs/
@@ -18,3 +19,7 @@ Thumbs.db
 *.swp
 *.swo
 *~
+=======
+__pycache__/
+*.pyc
+>>>>>>> f281edf (Initial TinyPM release)

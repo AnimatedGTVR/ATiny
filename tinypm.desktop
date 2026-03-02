@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=TinyPM
+GenericName=Package Manager
+Comment=Manage Flatpak, Snap, and APT packages with TinyPM
+Exec=/home/animated/.atiny/bin/tinypm-app
+Terminal=true
+Categories=System;PackageManager;
+Keywords=packages;flatpak;snap;apt;tinypm;
+Icon=system-software-install
+StartupNotify=true
