@@ -158,9 +158,71 @@ backend_os_name() {
     fi
 }
 
+native_pm_command() {
+    case "$1" in
+        apt) printf '%s\n' apt-get ;;
+        dnf) printf '%s\n' dnf ;;
+        pacman) printf '%s\n' pacman ;;
+        xbps) printf '%s\n' xbps-install ;;
+        zypper) printf '%s\n' zypper ;;
+        apk) printf '%s\n' apk ;;
+        emerge) printf '%s\n' emerge ;;
+        *) return 1 ;;
+    esac
+}
+
+native_pm_available() {
+    local pm="$1"
+    local cmd
+
+    cmd="$(native_pm_command "$pm")" || return 1
+    backend_has_cmd "$cmd"
+}
+
+detect_native_pm() {
+    local configured
+
+    configured="$(tinypm_config_get native_pm 2>/dev/null || true)"
+    if [[ -n "$configured" && "$configured" != "auto" ]] && native_pm_available "$configured"; then
+        printf '%s\n' "$configured"
+        return 0
+    fi
+
+    for pm in apt dnf pacman xbps zypper apk emerge; do
+        if native_pm_available "$pm"; then
+            printf '%s\n' "$pm"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+native_pm_label() {
+    case "$1" in
+        apt) printf '%s\n' 'APT' ;;
+        dnf) printf '%s\n' 'DNF' ;;
+        pacman) printf '%s\n' 'Pacman' ;;
+        xbps) printf '%s\n' 'XBPS' ;;
+        zypper) printf '%s\n' 'Zypper' ;;
+        apk) printf '%s\n' 'APK' ;;
+        emerge) printf '%s\n' 'Portage' ;;
+        seed) printf '%s\n' 'Seed' ;;
+        *) printf '%s\n' "$1" ;;
+    esac
+}
+
+is_native_provider() {
+    case "$1" in
+        native|apt|dnf|pacman|xbps|zypper|apk|emerge) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
 normalize_provider() {
     case "${1:-auto}" in
         flatpack) echo "flatpak" ;;
+        native) echo "native" ;;
         *) echo "${1:-auto}" ;;
     esac
 }
@@ -169,21 +231,37 @@ provider_from_flag() {
     case "${1:-}" in
         -f|--flat|--flatpak) echo "flatpak" ;;
         -s|--snp|--snap) echo "snap" ;;
-        -n|--nat|--native|--apt) echo "apt" ;;
-        auto|flatpak|snap|apt|flatpack) normalize_provider "$1" ;;
+        -n|--nat|--native) echo "native" ;;
+        --seed) echo "seed" ;;
+        auto|flatpak|snap|native|apt|dnf|pacman|xbps|zypper|apk|emerge|seed|flatpack)
+            normalize_provider "$1"
+            ;;
         *) return 1 ;;
     esac
 }
 
 ensure_provider_available() {
-    case "$(normalize_provider "$1")" in
+    local provider
+    provider="$(normalize_provider "$1")"
+
+    case "$provider" in
         flatpak) backend_has_cmd flatpak || die "flatpak is not installed" ;;
         snap) backend_has_cmd snap || die "snap is not installed" ;;
-        apt) backend_has_cmd apt-get || die "apt-get is not installed" ;;
+        seed) seed_has_recipes || die "seed recipes are unavailable" ;;
         auto)
-            backend_has_cmd flatpak || backend_has_cmd snap || backend_has_cmd apt-get || die "flatpak, snap, and apt-get are all unavailable"
+            detect_native_pm >/dev/null 2>&1 || backend_has_cmd flatpak || backend_has_cmd snap || seed_has_recipes || die "no native package manager, flatpak, snap, or seed recipes are available"
             ;;
-        *) die "unknown provider: $1" ;;
+        *)
+            if is_native_provider "$provider"; then
+                if [[ "$provider" == "native" ]]; then
+                    detect_native_pm >/dev/null 2>&1 || die "no supported native package manager was detected"
+                else
+                    native_pm_available "$provider" || die "$provider is not installed"
+                fi
+            else
+                die "unknown provider: $provider"
+            fi
+            ;;
     esac
 }
 
@@ -192,23 +270,34 @@ pick_install_provider() {
     requested="$(normalize_provider "${1:-auto}")"
 
     case "$requested" in
-        flatpak|snap|apt)
+        flatpak|snap|seed)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
         auto)
-            if backend_has_cmd flatpak; then
+            if detect_native_pm >/dev/null 2>&1; then
+                detect_native_pm
+            elif backend_has_cmd flatpak; then
                 echo "flatpak"
             elif backend_has_cmd snap; then
                 echo "snap"
-            elif backend_has_cmd apt-get; then
-                echo "apt"
+            elif seed_has_recipes; then
+                echo "seed"
             else
-                die "flatpak, snap, and apt-get are all unavailable"
+                die "no native package manager, flatpak, snap, or seed recipes are available"
             fi
             ;;
         *)
-            die "unknown provider: $requested"
+            if is_native_provider "$requested"; then
+                ensure_provider_available "$requested"
+                if [[ "$requested" == "native" ]]; then
+                    detect_native_pm
+                else
+                    echo "$requested"
+                fi
+            else
+                die "unknown provider: $requested"
+            fi
             ;;
     esac
 }
@@ -219,7 +308,7 @@ pick_installed_provider() {
     requested="$(normalize_provider "${2:-auto}")"
 
     case "$requested" in
-        flatpak|snap|apt)
+        flatpak|snap|seed)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
@@ -228,20 +317,33 @@ pick_installed_provider() {
                 echo "flatpak"
             elif backend_has_cmd snap && package_in_snap "$package"; then
                 echo "snap"
-            elif backend_has_cmd apt-get && package_in_apt "$package"; then
-                echo "apt"
+            elif package_in_apt "$package" 2>/dev/null; then
+                detect_native_pm
+            elif package_in_seed "$package" 2>/dev/null; then
+                echo "seed"
+            elif detect_native_pm >/dev/null 2>&1; then
+                detect_native_pm
             elif backend_has_cmd flatpak; then
                 echo "flatpak"
             elif backend_has_cmd snap; then
                 echo "snap"
-            elif backend_has_cmd apt-get; then
-                echo "apt"
+            elif seed_has_recipes; then
+                echo "seed"
             else
-                die "flatpak, snap, and apt-get are all unavailable"
+                die "no native package manager, flatpak, snap, or seed recipes are available"
             fi
             ;;
         *)
-            die "unknown provider: $requested"
+            if is_native_provider "$requested"; then
+                ensure_provider_available "$requested"
+                if [[ "$requested" == "native" ]]; then
+                    detect_native_pm
+                else
+                    echo "$requested"
+                fi
+            else
+                die "unknown provider: $requested"
+            fi
             ;;
     esac
 }
@@ -252,23 +354,27 @@ pick_runner_provider() {
     requested="$(normalize_provider "${2:-auto}")"
 
     case "$requested" in
-        flatpak|snap)
+        flatpak|snap|seed)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
-        apt)
-            die "run is not supported for apt packages"
-            ;;
         auto)
-            if backend_has_cmd flatpak && package_in_flatpak "$package"; then
+            if package_in_seed "$package" 2>/dev/null; then
+                echo "seed"
+            elif backend_has_cmd flatpak && package_in_flatpak "$package"; then
                 echo "flatpak"
             elif backend_has_cmd snap && package_in_snap "$package"; then
                 echo "snap"
+            elif package_in_seed "$package" 2>/dev/null; then
+                echo "seed"
             else
-                die "run only works for installed flatpak or snap apps"
+                die "run requires flatpak, snap, or seed for $package"
             fi
             ;;
         *)
+            if is_native_provider "$requested"; then
+                die "run is not supported for native packages"
+            fi
             die "unknown provider: $requested"
             ;;
     esac

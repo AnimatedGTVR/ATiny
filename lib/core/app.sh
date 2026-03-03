@@ -13,7 +13,7 @@ app_pause() {
 app_pick_provider() {
     local choice
 
-    printf 'Choose a source [auto/flatpak/snap/apt] (default: auto): ' >&2
+    printf 'Choose a source [auto/native/flatpak/snap/seed/apt/dnf/pacman/xbps/zypper/apk/emerge] (default: auto): ' >&2
     IFS= read -r choice || return 1
     choice="${choice:-auto}"
     provider_from_flag "$choice" 2>/dev/null || normalize_provider "$choice"
@@ -30,16 +30,18 @@ app_prompt_value() {
 }
 
 terminal_app_ui() {
-    local choice provider package
+    local choice provider package native_display
 
     while true; do
+        native_display="$(detect_native_pm 2>/dev/null || echo seed)"
         app_divider
         printf 'TinyPM Terminal App\n'
-        printf 'Installed desktop apps: %s | TinyPM-managed packages: %s | Discover catalog: %s\n' \
+        printf 'Native source: %s | Installed desktop apps: %s | Managed: %s | Catalog: %s\n' \
+            "$(native_pm_label "$native_display")" \
             "$(installed_app_count 2>/dev/null || echo 0)" \
             "$(tracked_package_count 2>/dev/null || echo 0)" \
             "$(catalog_count 2>/dev/null || echo 0)"
-        printf 'Discover is a small built-in catalog, not every app from Flatpak, Snap, or APT.\n'
+        printf 'Discover is a starter catalog. Seed is TinyPM\''s built-in mini package manager.\n'
         printf '\n'
         printf '1. View my desktop apps\n'
         printf '2. Browse discover catalog\n'
@@ -116,7 +118,7 @@ terminal_app_ui() {
                 app_pause
                 ;;
             10)
-                package="$(app_prompt_value "App id or snap name")" || continue
+                package="$(app_prompt_value "App id, command, or seed package")" || continue
                 provider="$(app_pick_provider)" || continue
                 run_pkg "$package" "$provider"
                 ;;

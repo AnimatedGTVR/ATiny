@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 
 usage() {
-    cat <<'EOF'
-TinyPM: a tiny package manager for Flatpak, Snap, and APT
+    cat <<'EOF2'
+TinyPM v1.8.0: a tiny package manager for native Linux PMs, Flatpak, Snap, and Seed
 
 Usage:
-  tinypm install [-f|-s|-n] <package>
-  tinypm search [-f|-s|-n] <query>
-  tinypm remove [-f|-s|-n] <package>
-  tinypm list [-f|-s|-n]
-  tinypm run [-f|-s] <app>
-  tinypm start [-f|-s] <app>
-  tinypm update [-f|-s|-n]
+  tinypm install [-f|-s|-n|--seed] <package>
+  tinypm search [-f|-s|-n|--seed] <query>
+  tinypm remove [-f|-s|-n|--seed] <package>
+  tinypm list [-f|-s|-n|--seed]
+  tinypm run [-f|-s|--seed] <app>
+  tinypm start [-f|-s|--seed] <app>
+  tinypm update [-f|-s|-n|--seed]
   tinypm info <package>
   tinypm managed
   tinypm apps
@@ -22,24 +22,25 @@ Usage:
   tinypm-app
 
 Shortcuts:
-  ainstall [-f|-s|-n] <package>
-  search   [-f|-s|-n] <query>
-  term     [-f|-s|-n] <package>
-  start    [-f|-s] <app>
-  supdate  [-f|-s|-n]
-
-Compatibility:
-  atiny <same commands as tinypm>
+  ainstall [-f|-s|-n|--seed] <package>
+  search   [-f|-s|-n|--seed] <query>
+  term     [-f|-s|-n|--seed] <package>
+  start    [-f|-s|--seed] <app>
+  supdate  [-f|-s|-n|--seed]
 
 Flags:
   -f, --flat, --flatpak  use Flatpak
   -s, --snp, --snap      use Snap
-  -n, --nat, --native    use native APT
+  -n, --nat, --native    use the detected native package manager
+  --seed                 use Seed, TinyPM's built-in mini package manager
+
+Native PMs:
+  TinyPM can detect apt, dnf, pacman, xbps, zypper, apk, and emerge.
 
 Notes:
-  `discover` is a small built-in starter catalog, not every package available
-  from Flatpak, Snap, or APT.
-EOF
+  `discover` is a starter catalog, not every package available everywhere.
+  If no native package manager is detected, TinyPM can fall back to Seed.
+EOF2
 }
 
 run_with_spinner() {

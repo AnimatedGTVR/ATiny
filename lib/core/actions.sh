@@ -3,12 +3,20 @@
 install_pkg() {
     local package="$1"
     local provider
+
     provider="$(pick_install_provider "${2:-auto}")"
 
     case "$provider" in
         flatpak) install_flatpak "$package" ;;
         snap) snap_install "$package" ;;
-        apt) apt_install "$package" ;;
+        seed) seed_install "$package" ;;
+        *)
+            if is_native_provider "$provider"; then
+                apt_install "$package" "$provider"
+            else
+                die "unknown provider: $provider"
+            fi
+            ;;
     esac
 
     record_tracked_package "$package" "$provider"
@@ -16,7 +24,8 @@ install_pkg() {
 
 search_pkg() {
     local query="$1"
-    local provider
+    local provider native_pm printed=0
+
     provider="$(normalize_provider "${2:-auto}")"
 
     case "$provider" in
@@ -28,33 +37,43 @@ search_pkg() {
             ensure_provider_available snap
             snap_search "$query"
             ;;
-        apt)
-            ensure_provider_available apt
-            apt_search "$query"
+        seed)
+            ensure_provider_available seed
+            seed_search "$query"
             ;;
         auto)
             ensure_provider_available auto
+            native_pm="$(detect_native_pm 2>/dev/null || true)"
+            if [[ -n "$native_pm" ]]; then
+                echo "== $(native_pm_label "$native_pm") =="
+                apt_search "$query" "$native_pm"
+                printed=1
+            fi
             if backend_has_cmd flatpak; then
+                [[ "$printed" -eq 1 ]] && echo
                 echo "== Flatpak =="
                 flatpak_search "$query"
+                printed=1
             fi
             if backend_has_cmd snap; then
-                if backend_has_cmd flatpak; then
-                    echo
-                fi
+                [[ "$printed" -eq 1 ]] && echo
                 echo "== Snap =="
                 snap_search "$query"
+                printed=1
             fi
-            if backend_has_cmd apt-cache; then
-                if backend_has_cmd flatpak || backend_has_cmd snap; then
-                    echo
-                fi
-                echo "== APT =="
-                apt_search "$query"
+            if seed_has_recipes; then
+                [[ "$printed" -eq 1 ]] && echo
+                echo "== Seed =="
+                seed_search "$query"
             fi
             ;;
         *)
-            die "unknown provider: $provider"
+            if is_native_provider "$provider"; then
+                ensure_provider_available "$provider"
+                apt_search "$query" "$provider"
+            else
+                die "unknown provider: $provider"
+            fi
             ;;
     esac
 }
@@ -72,14 +91,22 @@ remove_pkg() {
     case "$provider" in
         flatpak) flatpak_remove "$package" ;;
         snap) snap_remove "$package" ;;
-        apt) apt_remove "$package" ;;
+        seed) seed_remove "$package" ;;
+        *)
+            if is_native_provider "$provider"; then
+                apt_remove "$package" "$provider"
+            else
+                die "unknown provider: $provider"
+            fi
+            ;;
     esac
 
     forget_tracked_package "$package"
 }
 
 list_pkgs() {
-    local provider
+    local provider native_pm printed=0
+
     provider="$(normalize_provider "${1:-auto}")"
 
     case "$provider" in
@@ -91,33 +118,43 @@ list_pkgs() {
             ensure_provider_available snap
             snap_list
             ;;
-        apt)
-            ensure_provider_available apt
-            apt_list
+        seed)
+            ensure_provider_available seed
+            seed_list
             ;;
         auto)
             ensure_provider_available auto
+            native_pm="$(detect_native_pm 2>/dev/null || true)"
+            if [[ -n "$native_pm" ]]; then
+                echo "== $(native_pm_label "$native_pm") =="
+                apt_list "$native_pm"
+                printed=1
+            fi
             if backend_has_cmd flatpak; then
+                [[ "$printed" -eq 1 ]] && echo
                 echo "== Flatpak =="
                 flatpak_list
+                printed=1
             fi
             if backend_has_cmd snap; then
-                if backend_has_cmd flatpak; then
-                    echo
-                fi
+                [[ "$printed" -eq 1 ]] && echo
                 echo "== Snap =="
                 snap_list
+                printed=1
             fi
-            if backend_has_cmd apt-get; then
-                if backend_has_cmd flatpak || backend_has_cmd snap; then
-                    echo
-                fi
-                echo "== APT =="
-                apt_list
+            if [[ -d "$seed_bin_dir" ]]; then
+                [[ "$printed" -eq 1 ]] && echo
+                echo "== Seed =="
+                seed_list
             fi
             ;;
         *)
-            die "unknown provider: $provider"
+            if is_native_provider "$provider"; then
+                ensure_provider_available "$provider"
+                apt_list "$provider"
+            else
+                die "unknown provider: $provider"
+            fi
             ;;
     esac
 }
@@ -135,11 +172,13 @@ run_pkg() {
     case "$provider" in
         flatpak) flatpak_run "$package" ;;
         snap) snap_run "$package" ;;
+        seed) seed_run "$package" ;;
     esac
 }
 
 update_pkgs() {
-    local provider
+    local provider native_pm
+
     provider="$(normalize_provider "${1:-auto}")"
 
     case "$provider" in
@@ -151,24 +190,33 @@ update_pkgs() {
             ensure_provider_available snap
             snap_update
             ;;
-        apt)
-            ensure_provider_available apt
-            apt_update
+        seed)
+            ensure_provider_available seed
+            seed_update
             ;;
         auto)
             ensure_provider_available auto
+            native_pm="$(detect_native_pm 2>/dev/null || true)"
+            if [[ -n "$native_pm" ]]; then
+                apt_update "$native_pm"
+            fi
             if backend_has_cmd flatpak; then
                 flatpak_update
             fi
             if backend_has_cmd snap; then
                 snap_update
             fi
-            if backend_has_cmd apt-get; then
-                apt_update
+            if [[ -d "$seed_packages_dir" ]]; then
+                seed_update
             fi
             ;;
         *)
-            die "unknown provider: $provider"
+            if is_native_provider "$provider"; then
+                ensure_provider_available "$provider"
+                apt_update "$provider"
+            else
+                die "unknown provider: $provider"
+            fi
             ;;
     esac
 }
@@ -182,6 +230,7 @@ info_pkg() {
     local tracked_provider="untracked"
     local tracked_added="unknown"
     local available_providers=""
+    local native_pm=""
 
     if tracked_provider="$(tracked_provider_for "$package" 2>/dev/null)"; then
         tracked_added="$(tracked_timestamp_for "$package" 2>/dev/null || echo unknown)"
@@ -195,12 +244,16 @@ info_pkg() {
     if backend_has_cmd snap && package_in_snap "$package"; then
         available_providers="${available_providers} snap"
     fi
-    if backend_has_cmd apt-get && package_in_apt "$package"; then
-        available_providers="${available_providers} apt"
+    native_pm="$(detect_native_pm 2>/dev/null || true)"
+    if [[ -n "$native_pm" ]] && package_in_apt "$package" "$native_pm"; then
+        available_providers="${available_providers} $native_pm"
+    fi
+    if package_in_seed "$package" 2>/dev/null; then
+        available_providers="${available_providers} seed"
     fi
 
     echo "Package: $package"
-        echo "Tracked by TinyPM: $tracked_provider"
+    echo "Tracked by TinyPM: $tracked_provider"
     if [[ "$tracked_provider" != "untracked" ]]; then
         echo "Tracked since: $tracked_added"
     fi

@@ -16,6 +16,7 @@ script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
 prog_name="$(basename "$0")"
 
 for module in \
+    "$script_dir/lib/core/config.sh" \
     "$script_dir/lib/core/common.sh" \
     "$script_dir/lib/core/state.sh" \
     "$script_dir/lib/core/ui.sh" \
@@ -24,12 +25,11 @@ for module in \
     "$script_dir/lib/providers/flatpak.sh" \
     "$script_dir/lib/providers/snap.sh" \
     "$script_dir/lib/providers/apt.sh" \
+    "$script_dir/lib/providers/seed.sh" \
     "$script_dir/lib/core/actions.sh" \
     "$script_dir/lib/core/doctor.sh" \
     "$script_dir/lib/core/args.sh"
 do
-    # Source each module relative to the installed ATiny directory.
-    # This keeps the entrypoint stable while allowing downstream remixes.
     [[ -r "$module" ]] || {
         echo "tinypm: missing module $module" >&2
         exit 1
@@ -72,7 +72,7 @@ case "$action" in
         app_ui
         ;;
     run|start)
-        [[ -n "$package" ]] || die "run requires an app id or snap name"
+        [[ -n "$package" ]] || die "run requires an app id, snap name, or seed package"
         run_pkg "$package" "$provider"
         ;;
     update)

@@ -1,0 +1,2 @@
+yq	binary	https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64	yq	YAML processor
+fx	binary	https://github.com/antonmedv/fx/releases/latest/download/fx_linux_amd64	fx	JSON viewer

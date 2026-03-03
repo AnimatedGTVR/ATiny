@@ -12,3 +12,5 @@ OBS Studio	Creative	flatpak	com.obsproject.Studio	Recording and streaming
 Musescore	Creative	flatpak	org.musescore.MuseScore	Sheet music editor
 Postman	Development	snap	postman	API platform
 htop	System	apt	htop	Process viewer
+yq	Development	seed	yq	Portable YAML processor
+fx	Development	seed	fx	Portable JSON viewer

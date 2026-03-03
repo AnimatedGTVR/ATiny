@@ -13,13 +13,16 @@ while [[ -L "$script_path" ]]; do
 done
 
 script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
+. "$script_dir/lib/core/config.sh"
 . "$script_dir/lib/core/common.sh"
 . "$script_dir/lib/core/state.sh"
 . "$script_dir/lib/core/apps.sh"
+. "$script_dir/lib/providers/seed.sh"
 
 flatpak_status="missing"
 snap_status="missing"
-apt_status="missing"
+native_status="missing"
+seed_status="missing"
 os_name="$(backend_os_name)"
 kernel_name="$(backend_run uname -r 2>/dev/null || echo unknown)"
 host_name="$(backend_run hostname 2>/dev/null || echo unknown)"
@@ -33,6 +36,7 @@ catalog_total="$(catalog_count 2>/dev/null || echo 0)"
 app_total="$(installed_app_count 2>/dev/null || echo 0)"
 backend_mode="$([[ "$use_host_backend" -eq 1 ]] && echo host || echo local)"
 auth_mode="$(backend_auth_mode)"
+native_pm="$(detect_native_pm 2>/dev/null || echo none)"
 
 if backend_has_cmd flatpak; then
     flatpak_status="available"
@@ -42,14 +46,18 @@ if backend_has_cmd snap; then
     snap_status="available"
 fi
 
-if backend_has_cmd apt-get; then
-    apt_status="available"
+if [[ "$native_pm" != "none" ]]; then
+    native_status="$(native_pm_label "$native_pm")"
+fi
+
+if seed_has_recipes; then
+    seed_status="available"
 fi
 
 cat "$script_dir/share/logo.txt"
 printf '\n'
 
-printf 'TinyPM v1.7.0\n'
+printf 'TinyPM v1.8.0\n'
 printf '%s\n' '------------------------------------------------------------'
 printf '  %-16s %s\n' 'Host' "$host_name"
 printf '  %-16s %s\n' 'OS' "$os_name"
@@ -60,10 +68,12 @@ printf '  %-16s %s\n' 'Session' "$session_name"
 printf '  %-16s %s\n' 'Uptime' "$uptime_text"
 printf '  %-16s %s\n' 'Backend Mode' "$backend_mode"
 printf '  %-16s %s\n' 'Auth Mode' "$auth_mode"
-printf '  %-16s %s\n' 'Backends' "flatpak=$flatpak_status snap=$snap_status apt=$apt_status"
+printf '  %-16s %s\n' 'Native PM' "$native_pm"
+printf '  %-16s %s\n' 'Backends' "native=$native_status flatpak=$flatpak_status snap=$snap_status seed=$seed_status"
 printf '  %-16s %s\n' 'Commands' "$command_count"
 printf '  %-16s %s\n' 'Desktop Apps' "$app_total"
 printf '  %-16s %s\n' 'Tracked' "$tracked_count"
 printf '  %-16s %s\n' 'Catalog' "$catalog_total"
 printf '  %-16s %s\n' 'State DB' "$(active_state_db)"
+printf '  %-16s %s\n' 'Config' "$tinypm_config_file"
 printf '  %-16s %s\n' 'Date' "$(date)"
