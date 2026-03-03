@@ -1,6 +1,7 @@
 name: Discord Changelog (Release)
 
 on:
+  workflow_dispatch:
   release:
     types: [published]
 
@@ -44,5 +45,11 @@ req = urllib.request.Request(
     data=json.dumps(payload).encode("utf-8"),
     headers={"Content-Type": "application/json"},
 )
-urllib.request.urlopen(req).read()
+try:
+    with urllib.request.urlopen(req) as response:
+        print(f"Discord webhook status: {response.status}")
+        response.read()
+except Exception as exc:
+    print(f"Discord webhook failed: {exc}")
+    raise
 PY
