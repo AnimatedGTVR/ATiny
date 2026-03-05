@@ -15,14 +15,18 @@ done
 script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
 tinypm_cmd="$script_dir/tinypm"
 [[ -x "$tinypm_cmd" ]] || tinypm_cmd="$script_dir/bin/tinypm"
+
 seed_catalog="$script_dir/share/seed.tsv"
 [[ -r "$seed_catalog" ]] || seed_catalog="$script_dir/bin/share/seed.tsv"
 tinypm_catalog="$script_dir/share/catalog.tsv"
 [[ -r "$tinypm_catalog" ]] || tinypm_catalog="$script_dir/bin/share/catalog.tsv"
 seed_logo="$script_dir/share/seed-logo.txt"
 [[ -r "$seed_logo" ]] || seed_logo="$script_dir/bin/share/seed-logo.txt"
+
 default_repo_url="https://github.com/AnimatedGTVR/TinyPM.git"
 default_prefix="${TINYPM_PREFIX:-$HOME/.tinypm}"
+config_file="${XDG_CONFIG_HOME:-$HOME/.config}/tinypm/config"
+backup_dir="$default_prefix/backups"
 
 usage() {
     cat <<'EOH'
@@ -36,7 +40,8 @@ Usage:
   seed remove <package>
   seed list
   seed run <package>
-  seed update
+  seed update [stable|main|vX.Y.Z[-suffix]]
+  seed rollback [backup.tar.gz]
   seed about
   seed info
   seed help
@@ -60,13 +65,9 @@ Purpose:
 - a bigger built-in store through `seed store`
 - self-update path through `seed update`
 
-Commands:
-- `seed store`
-- `seed search <query>`
-- `seed install <package>`
-- `seed list`
-- `seed run <package>`
-- `seed update`
+Safety:
+- `seed update` creates a runtime backup first
+- `seed rollback` restores a backup archive
 EOA
 }
 
@@ -145,16 +146,82 @@ EOF_ROW
     esac
 }
 
-find_repo_root() {
-    local candidate
-    for candidate in "$script_dir" "$script_dir/.." "$default_prefix/repo"; do
-        candidate="$(cd -P "$candidate" 2>/dev/null && pwd || true)"
-        [[ -n "$candidate" && -d "$candidate/.git" ]] && {
-            printf '%s\n' "$candidate"
-            return 0
-        }
-    done
-    return 1
+config_get() {
+    local key="$1"
+    [[ -r "$config_file" ]] || return 1
+    awk -F '=' -v key="$key" '$1 == key { print $2; found=1; exit } END { exit(found ? 0 : 1) }' "$config_file"
+}
+
+config_set() {
+    local key="$1"
+    local value="$2"
+    local tmp_file
+
+    mkdir -p "$(dirname "$config_file")"
+    tmp_file="$(mktemp)"
+
+    if [[ -r "$config_file" ]]; then
+        awk -F '=' -v key="$key" '$1 != key { print $0 }' "$config_file" >"$tmp_file"
+    fi
+
+    printf '%s=%s\n' "$key" "$value" >>"$tmp_file"
+    mv "$tmp_file" "$config_file"
+}
+
+is_valid_update_ref() {
+    local ref="$1"
+    [[ "$ref" == "main" || "$ref" == "stable" || "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)?$ ]]
+}
+
+latest_release_tag() {
+    local repo_root="$1"
+    local stable_tag
+
+    stable_tag="$(git -C "$repo_root" ls-remote --tags --refs origin 'v*' \
+        | awk '{print $2}' \
+        | sed 's#refs/tags/##' \
+        | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+        | sort -V \
+        | tail -n 1 || true)"
+
+    if [[ -n "$stable_tag" ]]; then
+        printf '%s\n' "$stable_tag"
+        return
+    fi
+
+    git -C "$repo_root" ls-remote --tags --refs origin 'v*' \
+        | awk '{print $2}' \
+        | sed 's#refs/tags/##' \
+        | sort -V \
+        | tail -n 1
+}
+
+resolve_update_ref() {
+    local requested="${1:-}"
+    local repo_root="$2"
+    local configured resolved
+
+    if [[ -z "$requested" ]]; then
+        configured="$(config_get seed_update_ref 2>/dev/null || true)"
+        requested="${configured:-main}"
+    fi
+
+    is_valid_update_ref "$requested" || {
+        echo "Invalid update ref: $requested" >&2
+        echo "Allowed refs: stable, main, or version tags like v2.0.0" >&2
+        exit 1
+    }
+
+    if [[ "$requested" == "stable" ]]; then
+        resolved="$(latest_release_tag "$repo_root" 2>/dev/null || true)"
+        if [[ -z "$resolved" ]]; then
+            resolved="main"
+        fi
+        printf '%s\n' "$resolved"
+        return
+    fi
+
+    printf '%s\n' "$requested"
 }
 
 resolve_repo_file() {
@@ -164,47 +231,74 @@ resolve_repo_file() {
 
     case "$target_name" in
         tinypm)
-            for candidate in                 "$repo_root/$target_name"                 "$repo_root/bin/$target_name"                 "$repo_root/atiny"                 "$repo_root/bin/atiny"
-            do
+            for candidate in "$repo_root/$target_name" "$repo_root/bin/$target_name"; do
                 [[ -e "$candidate" ]] && {
-                    printf '%s
-' "$candidate"
+                    printf '%s\n' "$candidate"
                     return 0
                 }
             done
             ;;
-        _spinner|tinypm-app|version|tinypm.desktop)
-            for candidate in                 "$repo_root/$target_name"                 "$repo_root/bin/$target_name"
-            do
+        _spinner|tinypm-app|version|tinypm.desktop|seed)
+            for candidate in "$repo_root/$target_name" "$repo_root/bin/$target_name"; do
                 [[ -e "$candidate" ]] && {
-                    printf '%s
-' "$candidate"
+                    printf '%s\n' "$candidate"
                     return 0
                 }
             done
-            ;;
-        seed)
-            for candidate in                 "$repo_root/$target_name"                 "$repo_root/bin/$target_name"
-            do
-                [[ -e "$candidate" ]] && {
-                    printf '%s
-' "$candidate"
-                    return 0
-                }
-            done
-            return 1
             ;;
         *)
             [[ -e "$repo_root/$target_name" ]] && {
-                printf '%s
-' "$repo_root/$target_name"
+                printf '%s\n' "$repo_root/$target_name"
                 return 0
             }
-            return 1
             ;;
     esac
 
     return 1
+}
+
+require_repo_file() {
+    local repo_root="$1"
+    local target_name="$2"
+    local path
+
+    path="$(resolve_repo_file "$repo_root" "$target_name" 2>/dev/null || true)"
+    [[ -n "$path" ]] || {
+        echo "[Seed] Missing required file in update source: $target_name" >&2
+        return 1
+    }
+
+    printf '%s\n' "$path"
+}
+
+backup_runtime() {
+    local backup_file timestamp
+
+    [[ -d "$default_prefix" ]] || return 1
+    mkdir -p "$backup_dir"
+
+    timestamp="$(date +%Y%m%d-%H%M%S)"
+    backup_file="$backup_dir/tinypm-runtime-$timestamp.tar.gz"
+
+    tar -C "$default_prefix" -czf "$backup_file" bin install.sh uninstall.sh 2>/dev/null || return 1
+    printf '%s\n' "$backup_file"
+}
+
+rollback_runtime() {
+    local archive="${1:-}"
+
+    if [[ -z "$archive" ]]; then
+        archive="$(ls -1t "$backup_dir"/tinypm-runtime-*.tar.gz 2>/dev/null | head -n 1 || true)"
+    fi
+
+    [[ -n "$archive" && -f "$archive" ]] || {
+        echo "No backup archive found to restore." >&2
+        exit 1
+    }
+
+    mkdir -p "$default_prefix"
+    tar -xzf "$archive" -C "$default_prefix"
+    echo "[Seed] Restored TinyPM runtime from $archive"
 }
 
 sync_runtime_from_repo() {
@@ -214,28 +308,34 @@ sync_runtime_from_repo() {
     local desktop_dir="$HOME/.local/share/applications"
     local local_bin="$HOME/.local/bin"
     local cmd
+    local src_spinner src_tinypm src_app src_seed src_version src_desktop
+
+    src_spinner="$(require_repo_file "$repo_root" _spinner)" || return 1
+    src_tinypm="$(require_repo_file "$repo_root" tinypm)" || return 1
+    src_app="$(require_repo_file "$repo_root" tinypm-app)" || return 1
+    src_seed="$(require_repo_file "$repo_root" seed)" || return 1
+    src_version="$(require_repo_file "$repo_root" version)" || return 1
+    src_desktop="$(require_repo_file "$repo_root" tinypm.desktop)" || return 1
 
     mkdir -p "$bin_dir" "$desktop_dir" "$local_bin"
     rm -rf "$bin_dir/lib" "$bin_dir/share" "$bin_dir/assets"
 
-    cp -R "$repo_root/lib" "$bin_dir/"
-    cp -R "$repo_root/share" "$bin_dir/"
-    cp -R "$repo_root/assets" "$bin_dir/"
-    cp -f "$(resolve_repo_file "$repo_root" _spinner)" "$bin_dir/_spinner"
-    cp -f "$(resolve_repo_file "$repo_root" tinypm)" "$bin_dir/tinypm"
-    cp -f "$(resolve_repo_file "$repo_root" tinypm-app)" "$bin_dir/tinypm-app"
-    if seed_source="$(resolve_repo_file "$repo_root" seed 2>/dev/null)"; then
-        cp -f "$seed_source" "$bin_dir/seed"
-    fi
-    cp -f "$(resolve_repo_file "$repo_root" version)" "$bin_dir/version"
-    cp -f "$(resolve_repo_file "$repo_root" tinypm.desktop)" "$bin_dir/tinypm.desktop"
+    cp -R "$repo_root/lib" "$bin_dir/" || return 1
+    cp -R "$repo_root/share" "$bin_dir/" || return 1
+    cp -R "$repo_root/assets" "$bin_dir/" || return 1
+    cp -f "$src_spinner" "$bin_dir/_spinner" || return 1
+    cp -f "$src_tinypm" "$bin_dir/tinypm" || return 1
+    cp -f "$src_app" "$bin_dir/tinypm-app" || return 1
+    cp -f "$src_seed" "$bin_dir/seed" || return 1
+    cp -f "$src_version" "$bin_dir/version" || return 1
+    cp -f "$src_desktop" "$bin_dir/tinypm.desktop" || return 1
     if [[ -f "$repo_root/syspm.sh" ]]; then
-        cp -f "$repo_root/syspm.sh" "$bin_dir/syspm"
+        cp -f "$repo_root/syspm.sh" "$bin_dir/syspm" || return 1
     fi
-    cp -f "$repo_root/scripts/install.sh" "$prefix_root/install.sh"
-    cp -f "$repo_root/scripts/uninstall.sh" "$prefix_root/uninstall.sh"
+    cp -f "$repo_root/scripts/install.sh" "$prefix_root/install.sh" || return 1
+    cp -f "$repo_root/scripts/uninstall.sh" "$prefix_root/uninstall.sh" || return 1
 
-    chmod +x "$bin_dir/_spinner" "$bin_dir/tinypm" "$bin_dir/tinypm-app" "$bin_dir/seed" "$bin_dir/version" "$prefix_root/install.sh" "$prefix_root/uninstall.sh"
+    chmod +x "$bin_dir/_spinner" "$bin_dir/tinypm" "$bin_dir/tinypm-app" "$bin_dir/seed" "$bin_dir/version" "$prefix_root/install.sh" "$prefix_root/uninstall.sh" || return 1
     [[ -f "$bin_dir/syspm" ]] && chmod +x "$bin_dir/syspm"
 
     ln -sfn "$bin_dir/tinypm" "$bin_dir/tiny"
@@ -252,40 +352,75 @@ sync_runtime_from_repo() {
     ln -sfn "$bin_dir/_spinner" "$local_bin/_spinner"
     [[ -f "$bin_dir/syspm" ]] && ln -sfn "$bin_dir/syspm" "$local_bin/syspm"
 
-    sed "s#^Exec=.*#Exec=tinypm-app#" "$repo_root/tinypm.desktop" >"$desktop_dir/tinypm.desktop"
+    sed 's#^Exec=.*#Exec=tinypm-app#' "$src_desktop" >"$desktop_dir/tinypm.desktop"
 }
 
 update_from_github() {
-    local repo_root repo_url clone_dir
+    local requested_ref="${1:-}"
+    local repo_root repo_url update_ref backup_file
 
     command -v git >/dev/null 2>&1 || {
         echo 'seed update requires git.' >&2
         exit 1
     }
 
-    if repo_root="$(find_repo_root)"; then
+    repo_root="$default_prefix/repo"
+    repo_url="$default_repo_url"
+    mkdir -p "$default_prefix"
+
+    if [[ -d "$repo_root/.git" ]]; then
         repo_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || printf '%s' "$default_repo_url")"
-        printf '[Seed] Updating TinyPM from %s\n' "$repo_url"
-        git -C "$repo_root" pull --rebase --autostash origin main
+        printf '[Seed] Updating TinyPM mirror from %s\n' "$repo_url"
+        git -C "$repo_root" fetch --tags origin
     else
-        repo_root="$default_prefix/repo"
-        repo_url="$default_repo_url"
-        mkdir -p "$default_prefix"
-        if [[ -d "$repo_root/.git" ]]; then
-            printf '[Seed] Updating TinyPM mirror from %s\n' "$repo_url"
-            git -C "$repo_root" pull --rebase --autostash origin main
+        printf '[Seed] Cloning TinyPM from %s\n' "$repo_url"
+        rm -rf "$repo_root"
+        git clone "$repo_url" "$repo_root"
+        git -C "$repo_root" fetch --tags origin
+    fi
+
+    update_ref="$(resolve_update_ref "$requested_ref" "$repo_root")"
+    config_set seed_update_ref "$update_ref"
+
+    printf '[Seed] Using update ref: %s\n' "$update_ref"
+    git -C "$repo_root" checkout -f "$update_ref"
+
+    backup_file="$(backup_runtime || true)"
+    if [[ -n "$backup_file" ]]; then
+        printf '[Seed] Runtime backup created: %s\n' "$backup_file"
+    fi
+
+    if ! sync_runtime_from_repo "$repo_root"; then
+        echo '[Seed] Runtime sync failed for selected ref.' >&2
+        if [[ "$update_ref" != "main" ]]; then
+            echo '[Seed] Falling back to main...' >&2
+            git -C "$repo_root" checkout -f main
+            config_set seed_update_ref main
+            update_ref="main"
+            if ! sync_runtime_from_repo "$repo_root"; then
+                if [[ -n "$backup_file" ]]; then
+                    echo "[Seed] Rolling back from $backup_file" >&2
+                    rollback_runtime "$backup_file"
+                fi
+                exit 1
+            fi
         else
-            printf '[Seed] Cloning TinyPM from %s\n' "$repo_url"
-            rm -rf "$repo_root"
-            git clone "$repo_url" "$repo_root"
+            if [[ -n "$backup_file" ]]; then
+                echo "[Seed] Rolling back from $backup_file" >&2
+                rollback_runtime "$backup_file"
+            fi
+            exit 1
         fi
     fi
 
-    sync_runtime_from_repo "$repo_root"
     if [[ -x "$default_prefix/bin/tinypm" ]]; then
         "$default_prefix/bin/tinypm" update --seed || true
     fi
+
     printf '[Seed] TinyPM and Seed are up to date.\n'
+    if [[ -n "$backup_file" ]]; then
+        printf '[Seed] Rollback command: seed rollback %s\n' "$backup_file"
+    fi
 }
 
 case "${1:-store}" in
@@ -322,7 +457,11 @@ case "${1:-store}" in
         ;;
     update)
         shift || true
-        update_from_github "$@"
+        update_from_github "${1:-}"
+        ;;
+    rollback)
+        shift || true
+        rollback_runtime "${1:-}"
         ;;
     "")
         print_store

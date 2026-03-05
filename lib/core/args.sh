@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+doctor_fix=0
+
 dispatch_multicall() {
     case "$prog_name" in
         ainstall) echo "install auto" ;;
@@ -19,10 +21,42 @@ parse_action_args() {
     package=""
 
     case "$action" in
-        list|managed|apps|app|update|doctor|help|version|-v|--version)
+        doctor)
+            while [[ $# -gt 0 ]]; do
+                case "$1" in
+                    --fix|--repair)
+                        doctor_fix=1
+                        shift
+                        ;;
+                    *)
+                        die "unknown doctor option: $1"
+                        ;;
+                esac
+            done
+            ;;
+        selftest|managed|apps|app|help|version|-v|--version)
+            [[ $# -eq 0 ]] || die "too many arguments"
+            ;;
+        list|update)
             if [[ $# -gt 0 ]] && provider="$(provider_from_flag "$1")"; then
                 shift
             fi
+            [[ $# -eq 0 ]] || die "too many arguments"
+            ;;
+        export-state)
+            if [[ $# -gt 0 ]]; then
+                package="$1"
+                shift
+            fi
+            [[ $# -eq 0 ]] || die "too many arguments"
+            ;;
+        import-state)
+            if [[ $# -gt 0 ]]; then
+                package="$1"
+                shift
+            fi
+            [[ -n "$package" ]] || die "import-state requires a file path"
+            [[ $# -eq 0 ]] || die "too many arguments"
             ;;
         *)
             if [[ $# -gt 0 ]] && provider="$(provider_from_flag "$1")"; then
@@ -37,10 +71,10 @@ parse_action_args() {
             if [[ $# -gt 0 ]] && provider="$(provider_from_flag "$1")"; then
                 shift
             fi
+
+            [[ $# -eq 0 ]] || die "too many arguments"
             ;;
     esac
-
-    [[ $# -eq 0 ]] || die "too many arguments"
 }
 
 init_cli_context() {

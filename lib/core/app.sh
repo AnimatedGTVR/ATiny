@@ -13,7 +13,7 @@ app_pause() {
 app_pick_provider() {
     local choice
 
-    printf 'Choose a source [auto/native/flatpak/snap/seed/apt/dnf/pacman/xbps/zypper/apk/emerge] (default: auto): ' >&2
+    printf 'Choose a source [auto/native/flatpak/snap/seed/apt/dnf/pacman/xbps/zypper/apk/emerge/brew/nix] (default: auto): ' >&2
     IFS= read -r choice || return 1
     choice="${choice:-auto}"
     provider_from_flag "$choice" 2>/dev/null || normalize_provider "$choice"

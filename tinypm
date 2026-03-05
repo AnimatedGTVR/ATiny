@@ -81,6 +81,15 @@ case "$action" in
     doctor)
         doctor
         ;;
+    selftest)
+        selftest
+        ;;
+    export-state)
+        state_export "${package:-}"
+        ;;
+    import-state)
+        state_import "$package"
+        ;;
     help|"")
         usage
         ;;

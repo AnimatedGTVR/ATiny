@@ -2,49 +2,54 @@
 
 usage() {
     cat <<'EOF2'
-TinyPM v2.0.0-alpha-untested.1: a tiny package manager for native Linux PMs, Flatpak, Snap, and Seed
+TinyPM v2.0.0-alpha-untested.1: a tiny package manager frontend for Linux package ecosystems
 
 Usage:
-  tinypm install [-f|-s|-n|--seed] <package>
-  tinypm search [-f|-s|-n|--seed] <query>
-  tinypm remove [-f|-s|-n|--seed] <package>
-  tinypm list [-f|-s|-n|--seed]
+  tinypm install [-f|-s|-n|--seed|--brew|--nix] <package>
+  tinypm search [-f|-s|-n|--seed|--brew|--nix] <query>
+  tinypm remove [-f|-s|-n|--seed|--brew|--nix] <package>
+  tinypm list [-f|-s|-n|--seed|--brew|--nix]
   tinypm run [-f|-s|--seed] <app>
   tinypm start [-f|-s|--seed] <app>
-  tinypm update [-f|-s|-n|--seed]
+  tinypm update [-f|-s|-n|--seed|--brew|--nix]
   tinypm info <package>
   tinypm managed
+  tinypm export-state [file]
+  tinypm import-state <file>
+  tinypm selftest
   tinypm apps
   tinypm discover [query]
-  tinypm doctor
+  tinypm doctor [--fix]
   tinypm version
   tinypm app
   tinypm-app
   tiny --version
   syspm update
-  seed [store|search|install|remove|list|run|update|about]
+  seed [store|search|install|remove|list|run|update|rollback|about]
 
 Shortcuts:
-  ainstall [-f|-s|-n|--seed] <package>
-  search   [-f|-s|-n|--seed] <query>
-  term     [-f|-s|-n|--seed] <package>
+  ainstall [-f|-s|-n|--seed|--brew|--nix] <package>
+  search   [-f|-s|-n|--seed|--brew|--nix] <query>
+  term     [-f|-s|-n|--seed|--brew|--nix] <package>
   start    [-f|-s|--seed] <app>
-  supdate  [-f|-s|-n|--seed]
+  supdate  [-f|-s|-n|--seed|--brew|--nix]
 
 Flags:
   -f, --flat, --flatpak  use Flatpak
   -s, --snp, --snap      use Snap
-  -n, --nat, --native    use the detected native package manager
-  --seed                 use Seed, TinyPM's built-in mini package manager
+  -n, --nat, --native    use detected native manager
+  --brew                 force Homebrew backend
+  --nix                  force Nix backend
+  --seed                 use Seed mini package manager
 
-Native PMs:
-  TinyPM can detect apt, dnf, pacman, xbps, zypper, apk, and emerge.
+Native PM detection supports:
+  apt, dnf, pacman, xbps, zypper, apk, emerge, brew, nix
 
 Notes:
-  `discover` and `seed store` are curated catalogs, not every package available everywhere.
-  If no native package manager is detected, TinyPM can fall back to Seed.
-  `syspm` routes TinyPM through the native system package manager.
-  `seed update` refreshes TinyPM from GitHub and then refreshes installed Seed packages.
+  `discover` and `seed store` are curated catalogs, not every package everywhere.
+  `syspm` routes TinyPM through the native system package manager only.
+  `seed update` creates a backup, updates from GitHub, and refreshes Seed packages.
+  Use `seed rollback <backup.tar.gz>` to restore from a backup if needed.
 EOF2
 }
 

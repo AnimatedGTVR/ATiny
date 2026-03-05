@@ -27,6 +27,8 @@ TinyPM currently supports:
 - Flatpak through `-f`
 - Snap through `-s`
 - Seed through `--seed`
+- forced Homebrew through `--brew`
+- forced Nix through `--nix`
 
 TinyPM detects and uses these native package managers:
 
@@ -37,6 +39,8 @@ TinyPM detects and uses these native package managers:
 - `zypper`
 - `apk`
 - `emerge`
+- `brew`
+- `nix`
 
 If none of those are available, TinyPM can fall back to Seed.
 
@@ -62,7 +66,9 @@ seed about
 seed update
 ```
 
-`seed update` pulls the latest TinyPM repo from GitHub and refreshes the installed runtime.
+`seed update` now uses a locked update ref (`stable`, `main`, or a `vX.Y.Z` tag), creates a backup, refreshes TinyPM from GitHub, and then refreshes installed Seed packages. If the selected ref is incompatible, it automatically falls back to `main`.
+
+If needed, restore instantly with `seed rollback [backup.tar.gz]`.
 
 ---
 
@@ -75,6 +81,9 @@ seed update
 - Terminal app launcher: `tinypm-app`
 - Interactive installer menu
 - Managed package tracking
+- `tinypm selftest` for non-destructive health checks
+- `tinypm doctor --fix` for launcher/path repair
+- `tinypm export-state` and `tinypm import-state`
 - Modular internals under `lib/`
 
 ---
@@ -110,7 +119,8 @@ Then test it:
 export PATH="$HOME/.local/bin:$PATH"
 hash -r
 tinypm help
-tinypm doctor
+tinypm selftest
+tinypm doctor [--fix]
 tiny --version
 syspm update
 seed store
@@ -123,24 +133,27 @@ seed store
 ### Main
 
 ```bash
-tinypm install [-f|-s|-n|--seed] <package>
-tinypm search [-f|-s|-n|--seed] <query>
-tinypm remove [-f|-s|-n|--seed] <package>
-tinypm list [-f|-s|-n|--seed]
+tinypm install [-f|-s|-n|--seed|--brew|--nix] <package>
+tinypm search [-f|-s|-n|--seed|--brew|--nix] <query>
+tinypm remove [-f|-s|-n|--seed|--brew|--nix] <package>
+tinypm list [-f|-s|-n|--seed|--brew|--nix]
 tinypm start [-f|-s|--seed] <app>
-tinypm update [-f|-s|-n|--seed]
-tinypm doctor
+tinypm update [-f|-s|-n|--seed|--brew|--nix]
+tinypm selftest
+tinypm doctor [--fix]
+tinypm export-state [file]
+tinypm import-state <file>
 tinypm version
 ```
 
 ### Shortcuts
 
 ```bash
-ainstall [-f|-s|-n|--seed] <package>
-search [-f|-s|-n|--seed] <query>
-term [-f|-s|-n|--seed] <package>
+ainstall [-f|-s|-n|--seed|--brew|--nix] <package>
+search [-f|-s|-n|--seed|--brew|--nix] <query>
+term [-f|-s|-n|--seed|--brew|--nix] <package>
 start [-f|-s|--seed] <app>
-supdate [-f|-s|-n|--seed]
+supdate [-f|-s|-n|--seed|--brew|--nix]
 tiny --version
 syspm update
 ```
@@ -154,7 +167,8 @@ seed install <package>
 seed remove <package>
 seed list
 seed run <package>
-seed update
+seed update [stable|main|vX.Y.Z[-suffix]]
+seed rollback [backup.tar.gz]
 seed about
 ```
 

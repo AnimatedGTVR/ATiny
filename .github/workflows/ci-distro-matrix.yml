@@ -1,0 +1,53 @@
+name: Distro Matrix Smoke
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            image: ubuntu:24.04
+            setup: apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y bash git ca-certificates curl coreutils grep sed gawk findutils
+          - distro: fedora
+            image: fedora:41
+            setup: dnf -y install bash git ca-certificates curl coreutils grep sed gawk findutils which
+          - distro: arch
+            image: archlinux:latest
+            setup: pacman -Sy --noconfirm bash git ca-certificates curl coreutils grep sed gawk findutils which
+          - distro: alpine
+            image: alpine:3.20
+            setup: apk add --no-cache bash git ca-certificates curl coreutils grep sed gawk findutils
+          - distro: opensuse
+            image: opensuse/leap:15.6
+            setup: zypper --non-interactive refresh && zypper --non-interactive install -y bash git ca-certificates curl coreutils grep sed gawk findutils which
+
+    container:
+      image: ${{ matrix.image }}
+
+    steps:
+      - name: Setup base tools
+        shell: bash
+        run: |
+          set -e
+          ${{ matrix.setup }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: TinyPM smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n ./tinypm ./seed ./syspm.sh ./lib/core/*.sh ./lib/providers/*.sh
+          ./tinypm help >/dev/null
+          ./tinypm doctor >/dev/null
+          ./tinypm selftest >/dev/null
+          ./seed help >/dev/null
+          ./seed search yq | grep -qi yq

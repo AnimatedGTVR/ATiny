@@ -9,6 +9,9 @@ DESKTOP_DIR="$HOME/.local/share/applications"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/tinypm"
 CONFIG_FILE="$CONFIG_DIR/config"
 
+forced_native_pm=""
+non_interactive=0
+
 print_logo() {
     [[ -r "$HERE/share/logo.txt" ]] && { cat "$HERE/share/logo.txt" >&2; printf '\n' >&2; }
 }
@@ -19,18 +22,87 @@ print_seed_logo() {
 
 detect_native_pm() {
     command -v apt-get >/dev/null 2>&1 && { echo apt; return; }
-    command -v xbps-install >/dev/null 2>&1 && { echo xbps; return; }
-    command -v pacman >/dev/null 2>&1 && { echo pacman; return; }
     command -v dnf >/dev/null 2>&1 && { echo dnf; return; }
+    command -v pacman >/dev/null 2>&1 && { echo pacman; return; }
+    command -v xbps-install >/dev/null 2>&1 && { echo xbps; return; }
     command -v zypper >/dev/null 2>&1 && { echo zypper; return; }
     command -v apk >/dev/null 2>&1 && { echo apk; return; }
     command -v emerge >/dev/null 2>&1 && { echo emerge; return; }
+    command -v brew >/dev/null 2>&1 && { echo brew; return; }
+    command -v nix-env >/dev/null 2>&1 && { echo nix; return; }
     echo seed
 }
 
+is_valid_native_pm() {
+    case "$1" in
+        auto|apt|dnf|pacman|xbps|zypper|apk|emerge|brew|nix|seed) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+parse_cli_options() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -y|--yes|--non-interactive)
+                non_interactive=1
+                shift
+                ;;
+            --auto)
+                forced_native_pm="auto"
+                shift
+                ;;
+            --native=*)
+                forced_native_pm="${1#*=}"
+                shift
+                ;;
+            --native)
+                shift
+                [[ $# -gt 0 ]] || { echo "Missing value for --native" >&2; exit 1; }
+                forced_native_pm="$1"
+                shift
+                ;;
+            -h|--help)
+                cat <<'EOH'
+TinyPM installer
+
+Usage:
+  ./install.sh [--auto] [--native <pm>] [--yes]
+
+Native pm values:
+  auto, apt, dnf, pacman, xbps, zypper, apk, emerge, brew, nix, seed
+EOH
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                exit 1
+                ;;
+        esac
+    done
+
+    if [[ -n "$forced_native_pm" ]] && ! is_valid_native_pm "$forced_native_pm"; then
+        echo "Invalid native pm: $forced_native_pm" >&2
+        exit 1
+    fi
+}
+
 choose_native_pm() {
-    local detected choice
+    local detected choice selected
     detected="$(detect_native_pm)"
+
+    if [[ -n "$forced_native_pm" ]]; then
+        if [[ "$forced_native_pm" == "auto" ]]; then
+            echo "$detected"
+        else
+            echo "$forced_native_pm"
+        fi
+        return
+    fi
+
+    if [[ "$non_interactive" -eq 1 ]]; then
+        echo "$detected"
+        return
+    fi
 
     print_logo
     if [[ "$detected" == "seed" ]]; then
@@ -43,28 +115,34 @@ choose_native_pm() {
     printf 'Choose your primary native package manager:\n' >&2
     printf '  1. auto (%s)\n' "$detected" >&2
     printf '  2. apt\n' >&2
-    printf '  3. xbps\n' >&2
+    printf '  3. dnf\n' >&2
     printf '  4. pacman\n' >&2
-    printf '  5. dnf\n' >&2
+    printf '  5. xbps\n' >&2
     printf '  6. zypper\n' >&2
     printf '  7. apk\n' >&2
     printf '  8. emerge\n' >&2
-    printf '  9. seed\n' >&2
-    printf '\nSelect an option [1-9]: ' >&2
+    printf '  9. brew\n' >&2
+    printf ' 10. nix\n' >&2
+    printf ' 11. seed\n' >&2
+    printf '\nSelect an option [1-11]: ' >&2
     IFS= read -r choice || choice=1
 
     case "$choice" in
-        1|'') echo "$detected" ;;
-        2) echo apt ;;
-        3) echo xbps ;;
-        4) echo pacman ;;
-        5) echo dnf ;;
-        6) echo zypper ;;
-        7) echo apk ;;
-        8) echo emerge ;;
-        9) echo seed ;;
-        *) echo "$detected" ;;
+        1|'') selected="$detected" ;;
+        2) selected=apt ;;
+        3) selected=dnf ;;
+        4) selected=pacman ;;
+        5) selected=xbps ;;
+        6) selected=zypper ;;
+        7) selected=apk ;;
+        8) selected=emerge ;;
+        9) selected=brew ;;
+        10) selected=nix ;;
+        11) selected=seed ;;
+        *) selected="$detected" ;;
     esac
+
+    echo "$selected"
 }
 
 install_runtime() {
@@ -103,13 +181,13 @@ install_runtime() {
     [[ -f "$BIN_DIR/syspm" ]] && ln -sfn "$BIN_DIR/syspm" "$LOCAL_BIN/syspm"
     ln -sfn "$BIN_DIR/version" "$LOCAL_BIN/version"
     ln -sfn "$BIN_DIR/_spinner" "$LOCAL_BIN/_spinner"
-    rm -f "$LOCAL_BIN/atiny"
 
     sed "s#^Exec=.*#Exec=tinypm-app#" "$HERE/tinypm.desktop" >"$DESKTOP_DIR/tinypm.desktop"
 }
 
 write_config() {
     printf 'native_pm=%s\n' "$1" > "$CONFIG_FILE"
+    printf 'seed_update_ref=main\n' >> "$CONFIG_FILE"
 }
 
 ensure_local_bin_on_path() {
@@ -123,7 +201,10 @@ ensure_local_bin_on_path() {
 
 main() {
     local selected_pm
+
+    parse_cli_options "$@"
     selected_pm="$(choose_native_pm)"
+
     install_runtime
     write_config "$selected_pm"
     ensure_local_bin_on_path
@@ -137,10 +218,10 @@ main() {
     printf '  export PATH="$HOME/.local/bin:$PATH"\n'
     printf '\nThen test:\n'
     printf '  tinypm help\n'
-    printf '  tiny --version\n'
+    printf '  tinypm selftest\n'
+    printf '  tinypm doctor --fix\n'
     printf '  syspm update\n'
     printf '  seed store\n'
-    printf '  tinypm doctor\n'
 }
 
 main "$@"

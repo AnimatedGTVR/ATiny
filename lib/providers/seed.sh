@@ -78,6 +78,24 @@ seed_download_cmd() {
     fi
 }
 
+seed_arch_supported() {
+    local url="$1"
+    local arch
+
+    arch="$(backend_run uname -m 2>/dev/null || uname -m)"
+
+    case "$url" in
+        *amd64*|*x86_64*)
+            [[ "$arch" == "x86_64" || "$arch" == "amd64" ]] || return 1
+            ;;
+        *arm64*|*aarch64*)
+            [[ "$arch" == "aarch64" || "$arch" == "arm64" ]] || return 1
+            ;;
+    esac
+
+    return 0
+}
+
 seed_download_to() {
     local url="$1"
     local destination="$2"
@@ -109,6 +127,7 @@ EOI
 
     case "$package_type" in
         binary)
+            seed_arch_supported "$url" || die "seed package $name is not available for this architecture"
             run_with_spinner "Downloading $name with Seed" seed_download_to "$url" "$file_path"
             [[ -f "$file_path" ]] || die "seed download did not produce $file_path"
             chmod +x "$file_path"

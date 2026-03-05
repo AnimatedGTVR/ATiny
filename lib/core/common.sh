@@ -171,6 +171,8 @@ native_pm_command() {
         zypper) printf '%s\n' zypper ;;
         apk) printf '%s\n' apk ;;
         emerge) printf '%s\n' emerge ;;
+        brew) printf '%s\n' brew ;;
+        nix) printf '%s\n' nix-env ;;
         *) return 1 ;;
     esac
 }
@@ -192,7 +194,7 @@ detect_native_pm() {
         return 0
     fi
 
-    for pm in apt dnf pacman xbps zypper apk emerge; do
+    for pm in apt dnf pacman xbps zypper apk emerge brew nix; do
         if native_pm_available "$pm"; then
             printf '%s\n' "$pm"
             return 0
@@ -211,6 +213,8 @@ native_pm_label() {
         zypper) printf '%s\n' 'Zypper' ;;
         apk) printf '%s\n' 'APK' ;;
         emerge) printf '%s\n' 'Portage' ;;
+        brew) printf '%s\n' 'Homebrew' ;;
+        nix) printf '%s\n' 'Nix' ;;
         seed) printf '%s\n' 'Seed' ;;
         *) printf '%s\n' "$1" ;;
     esac
@@ -218,7 +222,7 @@ native_pm_label() {
 
 is_native_provider() {
     case "$1" in
-        native|apt|dnf|pacman|xbps|zypper|apk|emerge) return 0 ;;
+        native|apt|dnf|pacman|xbps|zypper|apk|emerge|brew|nix) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -236,8 +240,10 @@ provider_from_flag() {
         -f|--flat|--flatpak) echo "flatpak" ;;
         -s|--snp|--snap) echo "snap" ;;
         -n|--nat|--native) echo "native" ;;
+        --brew) echo "brew" ;;
+        --nix) echo "nix" ;;
         --seed) echo "seed" ;;
-        auto|flatpak|snap|native|apt|dnf|pacman|xbps|zypper|apk|emerge|seed|flatpack)
+        auto|flatpak|snap|native|apt|dnf|pacman|xbps|zypper|apk|emerge|brew|nix|seed|flatpack)
             normalize_provider "$1"
             ;;
         *) return 1 ;;
