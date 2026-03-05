@@ -30,6 +30,7 @@ doctor_fix_runtime() {
 
     ln -sfn "$script_dir/tinypm-app" "$local_bin/tinypm-app"
     ln -sfn "$script_dir/seed" "$local_bin/seed"
+    ln -sfn "$script_dir/seed" "$local_bin/seedstore"
     ln -sfn "$script_dir/version" "$local_bin/version"
     ln -sfn "$script_dir/_spinner" "$local_bin/_spinner"
 
@@ -149,6 +150,7 @@ doctor() {
     printf '  %-16s %s\n' 'tiny' "$(doctor_command_path tiny)"
     printf '  %-16s %s\n' 'syspm' "$(doctor_command_path syspm)"
     printf '  %-16s %s\n' 'seed' "$(doctor_command_path seed)"
+    printf '  %-16s %s\n' 'seedstore' "$(doctor_command_path seedstore)"
     printf '  %-16s %s\n' 'ainstall' "$(doctor_command_path ainstall)"
     printf '  %-16s %s\n' 'search' "$(doctor_command_path search)"
     printf '  %-16s %s\n' 'term' "$(doctor_command_path term)"

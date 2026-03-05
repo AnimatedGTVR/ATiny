@@ -80,6 +80,15 @@ parse_action_args() {
 init_cli_context() {
     if [[ "$prog_name" == "tiny" || "$prog_name" == "tinypm" ]]; then
         action="${1:-help}"
+        case "$action" in
+            i) action="install" ;;
+            s) action="search" ;;
+            r|rm|del) action="remove" ;;
+            u|up|upgrade) action="update" ;;
+            l|ls) action="list" ;;
+            v) action="version" ;;
+            st) action="start" ;;
+        esac
         shift || true
         parse_action_args "auto" "$@"
         return

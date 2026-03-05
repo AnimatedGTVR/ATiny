@@ -2,7 +2,7 @@
 
 usage() {
     cat <<'EOF2'
-TinyPM v2.0.0-alpha-untested.1: a tiny package manager frontend for Linux package ecosystems
+TinyPM.2.0.2.Aedition (abora): a tiny package manager frontend for Linux package ecosystems
 
 Usage:
   tinypm install [-f|-s|-n|--seed|--brew|--nix] <package>
@@ -27,6 +27,14 @@ Usage:
   syspm update
   seed [store|search|install|remove|list|run|update|rollback|about]
 
+Quick aliases:
+  tinypm i <pkg>         # install
+  tinypm s <query>       # search
+  tinypm r <pkg>         # remove
+  tinypm u               # update
+  tinypm ls              # list
+  tinypm v               # version
+
 Shortcuts:
   ainstall [-f|-s|-n|--seed|--brew|--nix] <package>
   search   [-f|-s|-n|--seed|--brew|--nix] <query>
@@ -46,6 +54,7 @@ Native PM detection supports:
   apt, dnf, pacman, xbps, zypper, apk, emerge, brew, nix
 
 Notes:
+  Use short source picks in terminal app: auto, f, s, n, seed.
   `discover` and `seed store` are curated catalogs, not every package everywhere.
   `syspm` routes TinyPM through the native system package manager only.
   `seed update` creates a backup, updates from GitHub, and refreshes Seed packages.

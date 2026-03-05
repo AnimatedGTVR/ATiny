@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.0--alpha--untested.1-blue.svg" alt="Version 2.0.0 alpha untested 1"/>
+  <img src="https://img.shields.io/badge/version-TinyPM.2.0.2.Aedition_(abora)-blue.svg" alt="TinyPM.2.0.2.Aedition (abora)"/>
   <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="GPLv3"/>
   <img src="https://img.shields.io/badge/platform-Linux-success.svg" alt="Linux"/>
 </p>
@@ -104,9 +104,16 @@ chmod +x install.sh
 ./install.sh
 ```
 
+Use the Abora flavor:
+
+```bash
+TINYPM_FLAVOR=abora ./install.sh
+```
+
 The installer will:
 
 - show the TinyPM logo
+- optionally apply a flavor such as `abora`
 - detect your native package manager
 - let you choose `apt`, `xbps`, `pacman`, `dnf`, `zypper`, `apk`, `emerge`, or `seed`
 - install TinyPM into `~/.tinypm`
@@ -118,13 +125,15 @@ Then test it:
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 hash -r
-tinypm help
-tinypm selftest
-tinypm doctor [--fix]
+"$HOME/.tinypm/bin/tinypm" help
+"$HOME/.tinypm/bin/tinypm" selftest
+"$HOME/.tinypm/bin/tinypm" doctor --fix
 tiny --version
 syspm update
 seed store
 ```
+
+If you install with a flavor, TinyPM keeps the `tinypm` command name and only changes branding, catalog defaults, and desktop metadata.
 
 ---
 
@@ -144,6 +153,17 @@ tinypm doctor [--fix]
 tinypm export-state [file]
 tinypm import-state <file>
 tinypm version
+```
+
+Quick forms:
+
+```bash
+tinypm i -f org.blender.Blender
+tinypm s blender
+tinypm r -n htop
+tinypm u
+tinypm ls
+tinypm v
 ```
 
 ### Shortcuts
@@ -170,6 +190,7 @@ seed run <package>
 seed update [stable|main|vX.Y.Z[-suffix]]
 seed rollback [backup.tar.gz]
 seed about
+seedstore [query]
 ```
 
 Examples:

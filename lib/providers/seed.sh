@@ -4,7 +4,7 @@ seed_root="${XDG_DATA_HOME:-$HOME/.local/share}/tinypm/seed"
 seed_packages_dir="$seed_root/packages"
 seed_bin_dir="$seed_root/bin"
 seed_recipe_file="$script_dir/share/seed.tsv"
-seed_catalog_file="$script_dir/share/catalog.tsv"
+seed_catalog_file="$(tinypm_catalog_file)"
 
 seed_recipe_entries() {
     [[ -r "$seed_recipe_file" ]] || return 1

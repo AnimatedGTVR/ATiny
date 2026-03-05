@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 catalog_entries() {
-    cat "$script_dir/share/catalog.tsv"
+    cat "$(tinypm_catalog_file)"
 }
 
 installed_apps() {

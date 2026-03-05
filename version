@@ -19,6 +19,20 @@ script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
 . "$script_dir/lib/core/apps.sh"
 . "$script_dir/lib/providers/seed.sh"
 
+flavor_name="TinyPM"
+flavor_label=""
+flavor_key="$(tinypm_active_flavor)"
+logo_file="$(tinypm_logo_file)"
+
+if [[ -r "$script_dir/flavors/$flavor_key/flavor.conf" ]]; then
+    . "$script_dir/flavors/$flavor_key/flavor.conf"
+    flavor_name="${FLAVOR_NAME:-TinyPM}"
+fi
+
+if [[ "$flavor_key" == "abora" ]]; then
+    flavor_label=""
+fi
+
 flatpak_status="missing"
 snap_status="missing"
 native_status="missing"
@@ -54,10 +68,14 @@ if seed_has_recipes; then
     seed_status="available"
 fi
 
-cat "$script_dir/share/logo.txt"
+cat "$logo_file"
 printf '\n'
 
-printf 'TinyPM v2.0.0-alpha-untested.1\n'
+if [[ "$flavor_key" == "abora" ]]; then
+    printf 'TinyPM.2.0.2.Aedition (abora)\n'
+else
+    printf '%s v2.0.2%s\n' "$flavor_name" "$flavor_label"
+fi
 printf '%s\n' '------------------------------------------------------------'
 printf '  %-16s %s\n' 'Host' "$host_name"
 printf '  %-16s %s\n' 'OS' "$os_name"
@@ -74,6 +92,7 @@ printf '  %-16s %s\n' 'Commands' "$command_count"
 printf '  %-16s %s\n' 'Desktop Apps' "$app_total"
 printf '  %-16s %s\n' 'Tracked' "$tracked_count"
 printf '  %-16s %s\n' 'Catalog' "$catalog_total"
+printf '  %-16s %s\n' 'Flavor' "$flavor_key"
 printf '  %-16s %s\n' 'State DB' "$(active_state_db)"
 printf '  %-16s %s\n' 'Config' "$tinypm_config_file"
 printf '  %-16s %s\n' 'Date' "$(date)"

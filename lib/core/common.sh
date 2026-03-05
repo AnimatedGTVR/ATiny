@@ -4,6 +4,36 @@ spinner="$script_dir/_spinner"
 version_cmd="$script_dir/version"
 use_host_backend=0
 
+tinypm_active_flavor() {
+    local flavor="${TINYPM_FLAVOR:-}"
+
+    if [[ -z "$flavor" ]] && declare -F tinypm_config_get >/dev/null 2>&1; then
+        flavor="$(tinypm_config_get tinypm_flavor 2>/dev/null || true)"
+    fi
+
+    printf '%s\n' "${flavor:-default}"
+}
+
+tinypm_flavor_file() {
+    local relative_path="$1"
+    local candidate="$script_dir/flavors/$(tinypm_active_flavor)/$relative_path"
+
+    [[ -r "$candidate" ]] || return 1
+    printf '%s\n' "$candidate"
+}
+
+tinypm_logo_file() {
+    tinypm_flavor_file logo.txt || printf '%s\n' "$script_dir/share/logo.txt"
+}
+
+tinypm_catalog_file() {
+    tinypm_flavor_file catalog.tsv || printf '%s\n' "$script_dir/share/catalog.tsv"
+}
+
+tinypm_desktop_file() {
+    tinypm_flavor_file tinypm.desktop || printf '%s\n' "$script_dir/tinypm.desktop"
+}
+
 if [[ "${container:-}" == "flatpak" ]] && command -v flatpak-spawn >/dev/null 2>&1; then
     use_host_backend=1
 fi
@@ -240,6 +270,9 @@ provider_from_flag() {
         -f|--flat|--flatpak) echo "flatpak" ;;
         -s|--snp|--snap) echo "snap" ;;
         -n|--nat|--native) echo "native" ;;
+        f|flat) echo "flatpak" ;;
+        s|snp) echo "snap" ;;
+        n|nat) echo "native" ;;
         --brew) echo "brew" ;;
         --nix) echo "nix" ;;
         --seed) echo "seed" ;;

@@ -13,6 +13,7 @@ while [[ -L "$script_path" ]]; do
 done
 
 script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
+prog_name="$(basename "$0")"
 tinypm_cmd="$script_dir/tinypm"
 [[ -x "$tinypm_cmd" ]] || tinypm_cmd="$script_dir/bin/tinypm"
 
@@ -27,6 +28,10 @@ default_repo_url="https://github.com/AnimatedGTVR/TinyPM.git"
 default_prefix="${TINYPM_PREFIX:-$HOME/.tinypm}"
 config_file="${XDG_CONFIG_HOME:-$HOME/.config}/tinypm/config"
 backup_dir="$default_prefix/backups"
+
+if [[ "$prog_name" == "seedstore" ]]; then
+    set -- store "$@"
+fi
 
 usage() {
     cat <<'EOH'
@@ -339,6 +344,7 @@ sync_runtime_from_repo() {
     [[ -f "$bin_dir/syspm" ]] && chmod +x "$bin_dir/syspm"
 
     ln -sfn "$bin_dir/tinypm" "$bin_dir/tiny"
+    ln -sfn "$bin_dir/seed" "$bin_dir/seedstore"
     for cmd in ainstall search term start supdate; do
         ln -sfn "$bin_dir/tinypm" "$bin_dir/$cmd"
         ln -sfn "$bin_dir/tinypm" "$local_bin/$cmd"
@@ -348,6 +354,7 @@ sync_runtime_from_repo() {
     ln -sfn "$bin_dir/tinypm" "$local_bin/tiny"
     ln -sfn "$bin_dir/tinypm-app" "$local_bin/tinypm-app"
     ln -sfn "$bin_dir/seed" "$local_bin/seed"
+    ln -sfn "$bin_dir/seed" "$local_bin/seedstore"
     ln -sfn "$bin_dir/version" "$local_bin/version"
     ln -sfn "$bin_dir/_spinner" "$local_bin/_spinner"
     [[ -f "$bin_dir/syspm" ]] && ln -sfn "$bin_dir/syspm" "$local_bin/syspm"
@@ -457,6 +464,7 @@ case "${1:-store}" in
         ;;
     update)
         shift || true
+        [[ $# -le 1 ]] || { echo 'seed update accepts at most one argument: stable|main|vX.Y.Z[-suffix]' >&2; exit 1; }
         update_from_github "${1:-}"
         ;;
     rollback)
