@@ -105,7 +105,7 @@ parse_cli_options() {
                 ;;
             -h|--help)
                 cat <<'EOH'
-TinyPM installer
+TinyPM V3 / Parcel installer
 
 Usage:
   ./install.sh [--auto] [--native <pm>] [--flavor <name>] [--yes]
@@ -152,7 +152,7 @@ choose_native_pm() {
     fi
 
     print_logo
-    printf '%s Installer\n' "$FLAVOR_NAME" >&2
+    printf '%s / Parcel Installer\n' "$FLAVOR_NAME" >&2
     if [[ "$detected" == "auto" ]]; then
         printf 'No native package manager was detected. TinyPM V3 will still use Flatpak or Snap when available.\n\n' >&2
     else
@@ -173,6 +173,7 @@ install_runtime() {
     cp -f "$HERE/_spinner" "$BIN_DIR/_spinner"
     cp -f "$HERE/tinypm" "$BIN_DIR/tinypm"
     cp -f "$HERE/version" "$BIN_DIR/version"
+    cp -f "$HERE/Parcel" "$BIN_DIR/Parcel"
     if [[ -f "$HERE/syspm.sh" ]]; then
         cp -f "$HERE/syspm.sh" "$BIN_DIR/syspm"
     fi
@@ -180,7 +181,7 @@ install_runtime() {
     cp -f "$(resolved_logo_file)" "$BIN_DIR/share/logo.txt"
     cp -f "$(resolved_catalog_file)" "$BIN_DIR/share/catalog.tsv"
 
-    chmod +x "$BIN_DIR/_spinner" "$BIN_DIR/tinypm" "$BIN_DIR/version"
+    chmod +x "$BIN_DIR/_spinner" "$BIN_DIR/tinypm" "$BIN_DIR/version" "$BIN_DIR/Parcel"
     [[ -f "$BIN_DIR/syspm" ]] && chmod +x "$BIN_DIR/syspm"
 
     ln -sfn "$BIN_DIR/tinypm" "$BIN_DIR/tiny"
@@ -189,6 +190,7 @@ install_runtime() {
     ln -sfn "$BIN_DIR/tinypm" "$LOCAL_BIN/tinypm"
     ln -sfn "$BIN_DIR/tinypm" "$LOCAL_BIN/tiny"
     ln -sfn "$BIN_DIR/tinypm" "$LOCAL_BIN/grab"
+    ln -sfn "$BIN_DIR/Parcel" "$LOCAL_BIN/Parcel"
     [[ -f "$BIN_DIR/syspm" ]] && ln -sfn "$BIN_DIR/syspm" "$LOCAL_BIN/syspm"
     ln -sfn "$BIN_DIR/version" "$LOCAL_BIN/version"
     ln -sfn "$BIN_DIR/_spinner" "$LOCAL_BIN/_spinner"

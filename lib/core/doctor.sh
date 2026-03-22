@@ -23,6 +23,7 @@ doctor_fix_runtime() {
     ln -sfn "$script_dir/tinypm" "$local_bin/tinypm"
     ln -sfn "$script_dir/tinypm" "$local_bin/tiny"
     ln -sfn "$script_dir/tinypm" "$local_bin/grab"
+    ln -sfn "$script_dir/Parcel" "$local_bin/Parcel"
     ln -sfn "$script_dir/version" "$local_bin/version"
     ln -sfn "$script_dir/_spinner" "$local_bin/_spinner"
 
@@ -43,7 +44,7 @@ selftest() {
     local failures=0
     local native_pm="none"
 
-    printf 'TinyPM selftest\n'
+    printf 'Parcel selftest\n'
     printf '%s\n' '------------------------------------------------------------'
 
     [[ -x "$script_dir/tinypm" ]] || { echo '[fail] missing tinypm entrypoint'; failures=$((failures+1)); }
@@ -112,13 +113,14 @@ doctor() {
         native_state="$(native_pm_label "$native_pm")"
     fi
 
-    printf 'TinyPM doctor\n'
+    printf 'Parcel doctor\n'
     printf '%s\n' '------------------------------------------------------------'
     printf '  %-16s %s\n' 'script_dir' "$script_dir"
     printf '  %-16s %s\n' 'path' "$path_state"
     printf '  %-16s %s\n' 'tinypm' "$(doctor_command_path tinypm)"
     printf '  %-16s %s\n' 'tiny' "$(doctor_command_path tiny)"
     printf '  %-16s %s\n' 'grab' "$(doctor_command_path grab)"
+    printf '  %-16s %s\n' 'Parcel' "$(doctor_command_path Parcel)"
     printf '  %-16s %s\n' 'syspm' "$(doctor_command_path syspm)"
     printf '  %-16s %s\n' 'backend_mode' "$([[ "$use_host_backend" -eq 1 ]] && echo host || echo local)"
     printf '  %-16s %s\n' 'auth_mode' "$(backend_auth_mode)"

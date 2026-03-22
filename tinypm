@@ -30,7 +30,7 @@ for module in \
     "$script_dir/lib/core/args.sh"
 do
     [[ -r "$module" ]] || {
-        echo "tinypm: missing module $module" >&2
+        echo "Parcel: missing module $module" >&2
         exit 1
     }
     . "$module"

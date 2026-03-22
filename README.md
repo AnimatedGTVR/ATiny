@@ -39,6 +39,12 @@ The main command is now:
 grab firefox
 ```
 
+You can also inspect the engine directly:
+
+```bash
+Parcel --version
+```
+
 If your system has more than one valid source available and you do not pass a flag, Parcel asks which backend you want to use.
 
 Examples:
@@ -67,6 +73,7 @@ TinyPM V3 is simpler on purpose.
 ## Features
 
 - Primary install command: `grab`
+- Engine command: `Parcel --version`
 - Main CLI: `tinypm`
 - Native-only wrapper: `syspm`
 - Flatpak, Snap, and native package support
@@ -106,6 +113,7 @@ The installer will:
 - install TinyPM into `~/.tinypm`
 - link commands into `~/.local/bin`
 - expose `tinypm`, `tiny`, `grab`, `syspm`, and `version`
+- expose `Parcel --version` for engine/runtime inspection
 - detect your native package manager automatically if one exists
 - prefer `nix` automatically on NixOS-based systems like Abora
 
@@ -117,6 +125,7 @@ hash -r
 grab firefox
 tinypm doctor
 tiny --version
+Parcel --version
 syspm update
 ```
 
@@ -128,6 +137,7 @@ syspm update
 
 ```bash
 grab [-f|-s|-n] <package>
+Parcel --version
 tinypm install [-f|-s|-n|--brew|--nix] <package>
 tinypm search [-f|-s|-n|--brew|--nix] <query>
 tinypm remove [-f|-s|-n|--brew|--nix] <package>
@@ -201,6 +211,7 @@ TinyPM V3 is intentionally smaller than the previous release.
 
 - `tinypm`: main CLI
 - `grab`: install-first entrypoint
+- `Parcel`: core engine identity/version entrypoint
 - `syspm`: native-only wrapper
 - `version`: version and system report
 - `lib/core/`: config, args, actions, state, doctor, UI

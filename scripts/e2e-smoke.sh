@@ -5,6 +5,8 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 printf '[e2e] syntax checks...\n'
 bash -n \
+  "$repo_root/Parcel" \
+  "$repo_root/grab" \
   "$repo_root/tinypm" \
   "$repo_root/syspm.sh" \
   "$repo_root/version" \
@@ -16,6 +18,7 @@ bash -n \
   "$repo_root/lib/providers/"*.sh
 
 printf '[e2e] local command smoke...\n'
+"$repo_root/Parcel" --version >/dev/null
 "$repo_root/tinypm" help >/dev/null
 "$repo_root/tinypm" doctor >/dev/null
 "$repo_root/grab" --version >/dev/null
@@ -44,6 +47,7 @@ mkdir -p "$HOME"
 
 "$repo_root/install.sh" >/dev/null
 
+"$HOME/.local/bin/Parcel" --version >/dev/null
 "$HOME/.local/bin/tinypm" help >/dev/null
 "$HOME/.local/bin/tiny" --version >/dev/null
 "$HOME/.local/bin/grab" help >/dev/null
@@ -55,6 +59,7 @@ rm -rf "$HOME/.tinypm" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HO
 mkdir -p "$HOME/.local/bin"
 TINYPM_FLAVOR=abora "$repo_root/install.sh" >/dev/null
 installed_version_output="$(mktemp)"
+"$HOME/.local/bin/Parcel" --version >/dev/null
 "$HOME/.local/bin/tiny" --version >"$installed_version_output"
 grep -q 'TinyPM V3 / Parcel v3.0.0' "$installed_version_output"
 rm -f "$installed_version_output"

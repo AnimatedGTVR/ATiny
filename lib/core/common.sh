@@ -45,7 +45,7 @@ if [[ "${container:-}" == "flatpak" ]] && command -v flatpak-spawn >/dev/null 2>
 fi
 
 die() {
-    echo "tinypm: $*" >&2
+    echo "Parcel: $*" >&2
     exit 1
 }
 

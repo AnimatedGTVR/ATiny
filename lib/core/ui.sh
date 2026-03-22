@@ -7,6 +7,7 @@ TinyPM V3
 Core engine: Parcel
 
 Usage:
+  Parcel --version
   grab <package>
   grab [-f|-s|-n] <package>
   tinypm install [-f|-s|-n|--brew|--nix] <package>
@@ -26,6 +27,7 @@ Usage:
   tinypm doctor [--fix]
   tinypm version
   tiny --version
+  Parcel --version
   grab firefox
   syspm update
 

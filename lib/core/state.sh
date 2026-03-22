@@ -60,7 +60,7 @@ forget_tracked_package() {
 
 print_tracked_packages() {
     if ! state_db_exists; then
-        echo "No packages are currently tracked by TinyPM."
+        echo "No packages are currently tracked by Parcel."
         return
     fi
 
@@ -87,7 +87,7 @@ state_export() {
         : > "$destination"
     fi
 
-    printf 'Exported TinyPM state to %s\n' "$destination"
+    printf 'Exported Parcel state to %s\n' "$destination"
 }
 
 state_import() {
@@ -104,5 +104,5 @@ state_import() {
 
     ensure_state_dir
     mv "$tmp_file" "$state_db"
-    printf 'Imported TinyPM state from %s\n' "$source"
+    printf 'Imported Parcel state from %s\n' "$source"
 }
