@@ -39,15 +39,17 @@ jobs:
           ${{ matrix.setup }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: TinyPM smoke
         shell: bash
         run: |
           set -euo pipefail
-          bash -n ./tinypm ./seed ./syspm.sh ./lib/core/*.sh ./lib/providers/*.sh
+          bash -n ./grab ./tinypm ./syspm.sh ./version ./scripts/install.sh ./scripts/uninstall.sh ./lib/core/*.sh ./lib/providers/*.sh
+          ./grab --help >/dev/null
+          ./grab --version >/dev/null
           ./tinypm help >/dev/null
           ./tinypm doctor >/dev/null
           ./tinypm selftest >/dev/null
-          ./seed help >/dev/null
-          ./seed search yq | grep -qi yq
+          ./tinypm search yq >/dev/null
+          ./syspm.sh help >/dev/null
