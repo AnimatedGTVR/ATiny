@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="assets/TinyLogo.png" alt="TinyPM V3 Logo" width="500"/>
-</p>
+
 
 <h1 align="center">TinyPM V3</h1>
 
