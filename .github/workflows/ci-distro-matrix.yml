@@ -45,11 +45,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash -n ./grab ./tinypm ./syspm.sh ./version ./scripts/install.sh ./scripts/uninstall.sh ./lib/core/*.sh ./lib/providers/*.sh
-          ./grab --help >/dev/null
-          ./grab --version >/dev/null
-          ./tinypm help >/dev/null
-          ./tinypm doctor >/dev/null
-          ./tinypm selftest >/dev/null
-          ./tinypm search yq >/dev/null
-          ./syspm.sh help >/dev/null
+          ./scripts/e2e-smoke.sh

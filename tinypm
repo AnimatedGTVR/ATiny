@@ -14,7 +14,7 @@ while [[ -L "$script_path" ]]; do
 done
 
 script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
-prog_name="$(basename "$0")"
+prog_name="${TINYPM_ENTRYPOINT:-$(basename "$0")}"
 
 for module in \
     "$script_dir/lib/core/config.sh" \

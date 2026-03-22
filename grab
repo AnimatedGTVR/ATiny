@@ -13,4 +13,5 @@ while [[ -L "$script_path" ]]; do
 done
 
 script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
-exec -a grab "$script_dir/tinypm" "$@"
+export TINYPM_ENTRYPOINT="grab"
+exec "$script_dir/tinypm" "$@"
