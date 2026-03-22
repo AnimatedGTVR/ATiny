@@ -4,6 +4,9 @@
 spinner="$script_dir/_spinner"
 version_cmd="$script_dir/version"
 use_host_backend=0
+tinypm_system_name="TinyPM V3"
+tinypm_engine_name="Parcel"
+tinypm_version="3.0.0"
 
 tinypm_active_flavor() {
     local flavor="${TINYPM_FLAVOR:-}"
@@ -33,8 +36,8 @@ tinypm_catalog_file() {
     tinypm_flavor_file catalog.tsv || printf '%s\n' "$script_dir/share/catalog.tsv"
 }
 
-tinypm_desktop_file() {
-    tinypm_flavor_file tinypm.desktop || printf '%s\n' "$script_dir/tinypm.desktop"
+tinypm_version_label() {
+    printf '%s\n' "$tinypm_system_name / $tinypm_engine_name v$tinypm_version"
 }
 
 if [[ "${container:-}" == "flatpak" ]] && command -v flatpak-spawn >/dev/null 2>&1; then
@@ -196,6 +199,29 @@ backend_os_name() {
     fi
 }
 
+backend_is_nixos() {
+    if [[ "$use_host_backend" -eq 1 ]]; then
+        # shellcheck disable=SC2016
+        flatpak-spawn --host sh -lc '
+            if [ -r /etc/os-release ]; then
+                . /etc/os-release
+                [ "${ID:-}" = "nixos" ]
+            else
+                exit 1
+            fi
+        ' 2>/dev/null
+        return
+    fi
+
+    if [[ -r /etc/os-release ]]; then
+        . /etc/os-release
+        [[ "${ID:-}" == "nixos" ]]
+        return
+    fi
+
+    return 1
+}
+
 native_pm_command() {
     case "$1" in
         apt) printf '%s\n' apt-get ;;
@@ -228,6 +254,12 @@ detect_native_pm() {
         return 0
     fi
 
+    # Abora rides on NixOS, so prefer Nix when the host identifies as NixOS.
+    if backend_is_nixos && native_pm_available nix; then
+        printf '%s\n' nix
+        return 0
+    fi
+
     for pm in apt dnf pacman xbps zypper apk emerge brew nix; do
         if native_pm_available "$pm"; then
             printf '%s\n' "$pm"
@@ -249,7 +281,6 @@ native_pm_label() {
         emerge) printf '%s\n' 'Portage' ;;
         brew) printf '%s\n' 'Homebrew' ;;
         nix) printf '%s\n' 'Nix' ;;
-        seed) printf '%s\n' 'Seed' ;;
         *) printf '%s\n' "$1" ;;
     esac
 }
@@ -279,12 +310,73 @@ provider_from_flag() {
         n|nat) echo "native" ;;
         --brew) echo "brew" ;;
         --nix) echo "nix" ;;
-        --seed) echo "seed" ;;
-        auto|flatpak|snap|native|apt|dnf|pacman|xbps|zypper|apk|emerge|brew|nix|seed|flatpack)
+        auto|flatpak|snap|native|apt|dnf|pacman|xbps|zypper|apk|emerge|brew|nix|flatpack)
             normalize_provider "$1"
             ;;
         *) return 1 ;;
     esac
+}
+
+available_install_providers() {
+    local native_pm
+
+    native_pm="$(detect_native_pm 2>/dev/null || true)"
+    if [[ -n "$native_pm" ]]; then
+        printf 'native:%s\n' "$native_pm"
+    fi
+    if backend_has_cmd flatpak; then
+        printf 'flatpak:flatpak\n'
+    fi
+    if backend_has_cmd snap; then
+        printf 'snap:snap\n'
+    fi
+}
+
+prompt_install_provider() {
+    local package="$1"
+    shift
+    local options=("$@")
+    local choice index label provider native_pm
+
+    [[ -t 0 && -t 1 ]] || {
+        printf '%s\n' "${options[0]%%:*}"
+        return 0
+    }
+
+    printf '\nParcel install routing for %s\n' "$package" >&2
+    printf 'Multiple package sources are available. Choose one:\n' >&2
+
+    index=1
+    for choice in "${options[@]}"; do
+        provider="${choice%%:*}"
+        native_pm="${choice#*:}"
+        case "$provider" in
+            native) label="Native ($(native_pm_label "$native_pm"))" ;;
+            flatpak) label="Flatpak" ;;
+            snap) label="Snap" ;;
+            *) label="$provider" ;;
+        esac
+        printf '  %s. %s\n' "$index" "$label" >&2
+        index=$((index + 1))
+    done
+
+    while true; do
+        printf 'Install via [1-%s]: ' "${#options[@]}" >&2
+        IFS= read -r choice || {
+            printf '%s\n' "${options[0]%%:*}"
+            return 0
+        }
+        case "$choice" in
+            ''|*[!0-9]*) ;;
+            *)
+                if [[ "$choice" -ge 1 && "$choice" -le "${#options[@]}" ]]; then
+                    printf '%s\n' "${options[$((choice - 1))]%%:*}"
+                    return 0
+                fi
+                ;;
+        esac
+        printf 'Please choose a valid source.\n' >&2
+    done
 }
 
 ensure_provider_available() {
@@ -294,9 +386,8 @@ ensure_provider_available() {
     case "$provider" in
         flatpak) backend_has_cmd flatpak || die "flatpak is not installed" ;;
         snap) backend_has_cmd snap || die "snap is not installed" ;;
-        seed) seed_has_recipes || die "seed recipes are unavailable" ;;
         auto)
-            detect_native_pm >/dev/null 2>&1 || backend_has_cmd flatpak || backend_has_cmd snap || seed_has_recipes || die "no native package manager, flatpak, snap, or seed recipes are available"
+            detect_native_pm >/dev/null 2>&1 || backend_has_cmd flatpak || backend_has_cmd snap || die "no native package manager, flatpak, or snap backend is available"
             ;;
         *)
             if is_native_provider "$provider"; then
@@ -313,26 +404,32 @@ ensure_provider_available() {
 }
 
 pick_install_provider() {
-    local requested
+    local requested native_pm
+    local options=()
     requested="$(normalize_provider "${1:-auto}")"
 
     case "$requested" in
-        flatpak|snap|seed)
+        flatpak|snap)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
         auto)
-            if detect_native_pm >/dev/null 2>&1; then
-                detect_native_pm
-            elif backend_has_cmd flatpak; then
-                echo "flatpak"
-            elif backend_has_cmd snap; then
-                echo "snap"
-            elif seed_has_recipes; then
-                echo "seed"
-            else
-                die "no native package manager, flatpak, snap, or seed recipes are available"
+            native_pm="$(detect_native_pm 2>/dev/null || true)"
+            if [[ -n "$native_pm" ]]; then
+                options+=("native:$native_pm")
             fi
+            if backend_has_cmd flatpak; then
+                options+=("flatpak:flatpak")
+            fi
+            if backend_has_cmd snap; then
+                options+=("snap:snap")
+            fi
+
+            case "${#options[@]}" in
+                0) die "no native package manager, flatpak, or snap backend is available" ;;
+                1) echo "${options[0]%%:*}" ;;
+                *) prompt_install_provider "${package:-package}" "${options[@]}" ;;
+            esac
             ;;
         *)
             if is_native_provider "$requested"; then
@@ -355,7 +452,7 @@ pick_installed_provider() {
     requested="$(normalize_provider "${2:-auto}")"
 
     case "$requested" in
-        flatpak|snap|seed)
+        flatpak|snap)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
@@ -366,18 +463,14 @@ pick_installed_provider() {
                 echo "snap"
             elif package_in_apt "$package" 2>/dev/null; then
                 detect_native_pm
-            elif package_in_seed "$package" 2>/dev/null; then
-                echo "seed"
             elif detect_native_pm >/dev/null 2>&1; then
                 detect_native_pm
             elif backend_has_cmd flatpak; then
                 echo "flatpak"
             elif backend_has_cmd snap; then
                 echo "snap"
-            elif seed_has_recipes; then
-                echo "seed"
             else
-                die "no native package manager, flatpak, snap, or seed recipes are available"
+                die "no native package manager, flatpak, or snap backend is available"
             fi
             ;;
         *)
@@ -401,21 +494,17 @@ pick_runner_provider() {
     requested="$(normalize_provider "${2:-auto}")"
 
     case "$requested" in
-        flatpak|snap|seed)
+        flatpak|snap)
             ensure_provider_available "$requested"
             echo "$requested"
             ;;
         auto)
-            if package_in_seed "$package" 2>/dev/null; then
-                echo "seed"
-            elif backend_has_cmd flatpak && package_in_flatpak "$package"; then
+            if backend_has_cmd flatpak && package_in_flatpak "$package"; then
                 echo "flatpak"
             elif backend_has_cmd snap && package_in_snap "$package"; then
                 echo "snap"
-            elif package_in_seed "$package" 2>/dev/null; then
-                echo "seed"
             else
-                die "run requires flatpak, snap, or seed for $package"
+                die "run requires flatpak or snap for $package"
             fi
             ;;
         *)

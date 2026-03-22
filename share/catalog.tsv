@@ -40,5 +40,3 @@ neovim	System	apt	neovim	Terminal editor
 ffmpeg	Media	apt	ffmpeg	Media toolkit
 python3	Development	apt	python3	Python runtime
 nodejs	Development	apt	nodejs	Node.js runtime
-yq	Development	seed	yq	Portable YAML processor
-fx	Development	seed	fx	Portable JSON viewer

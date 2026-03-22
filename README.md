@@ -1,90 +1,81 @@
 <p align="center">
-  <img src="assets/TinyLogo.png" alt="TinyPM Logo" width="500"/>
+  <img src="assets/TinyLogo.png" alt="TinyPM V3 Logo" width="500"/>
 </p>
 
-<h1 align="center">TinyPM</h1>
+<h1 align="center">TinyPM V3</h1>
 
 <p align="center">
-  A tiny terminal-first package manager frontend for Linux.<br>
-  Works with native package managers, Flatpak, Snap, and Seed. Licensed under GPLv3.
+  Powered by <strong>Parcel</strong>.<br>
+  A beginner-friendly Linux package wrapper for the Abora ecosystem, built on a NixOS base.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-TinyPM.2.0.2.Aedition_(abora)-blue.svg" alt="TinyPM.2.0.2.Aedition (abora)"/>
+  <img src="https://img.shields.io/badge/version-3.0.0-blue.svg" alt="v3.0.0"/>
+  <img src="https://img.shields.io/badge/engine-Parcel-1f6feb.svg" alt="Parcel"/>
   <img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="GPLv3"/>
   <img src="https://img.shields.io/badge/platform-Linux-success.svg" alt="Linux"/>
 </p>
 
 ---
 
-## What Is TinyPM?
+## TinyPM V3
 
-TinyPM is a small package manager frontend that gives you one command style across multiple Linux package sources.
+TinyPM V3 is the remastered release of TinyPM.
 
-TinyPM currently supports:
+The system name is `TinyPM V3`.
+The core engine name is `Parcel`.
 
-- native package managers through `-n`
-- Flatpak through `-f`
-- Snap through `-s`
-- Seed through `--seed`
-- forced Homebrew through `--brew`
-- forced Nix through `--nix`
+Parcel gives TinyPM one simple install flow across:
 
-TinyPM detects and uses these native package managers:
+- native package managers
+- Flatpak
+- Snap
 
-- `apt`
-- `dnf`
-- `pacman`
-- `xbps`
-- `zypper`
-- `apk`
-- `emerge`
-- `brew`
-- `nix`
+For Abora, the native path is Nix because Abora uses NixOS as its base.
 
-If none of those are available, TinyPM can fall back to Seed.
+The main command is now:
+
+```bash
+grab firefox
+```
+
+If your system has more than one valid source available and you do not pass a flag, Parcel asks which backend you want to use.
+
+Examples:
+
+```bash
+grab firefox
+grab -f org.mozilla.firefox
+grab -s firefox
+grab -n firefox
+```
 
 ---
 
-## What Is Seed?
+## Why V3
 
-Seed is TinyPM's built-in mini package manager and store.
+TinyPM V3 is simpler on purpose.
 
-It serves two roles:
-
-- portable package recipes for direct Seed installs
-- a simple storefront over TinyPM's larger built-in catalog
-
-Useful Seed commands:
-
-```bash
-seed store
-seed search blender
-seed install blender
-seed install yq
-seed about
-seed update
-```
-
-`seed update` now uses a locked update ref (`stable`, `main`, or a `vX.Y.Z` tag), creates a backup, refreshes TinyPM from GitHub, and then refreshes installed Seed packages. If the selected ref is incompatible, it automatically falls back to `main`.
-
-If needed, restore instantly with `seed rollback [backup.tar.gz]`.
+- `grab` is now the primary install command
+- Seed has been removed
+- desktop and intro launchers have been removed
+- the installer no longer asks you to pick a default install command flow
+- provider choice happens at install time when it is actually needed
 
 ---
 
 ## Features
 
-- Main commands: `tinypm` and `tiny`
-- Native shortcut: `syspm`
-- Shortcut commands: `ainstall`, `search`, `term`, `start`, `supdate`
-- Seed storefront command: `seed`
-- Terminal app launcher: `tinypm-app`
-- Interactive installer menu
+- Primary install command: `grab`
+- Main CLI: `tinypm`
+- Native-only wrapper: `syspm`
+- Flatpak, Snap, and native package support
+- Automatic backend detection
+- Interactive backend choice when multiple sources are available
 - Managed package tracking
-- `tinypm selftest` for non-destructive health checks
-- `tinypm doctor --fix` for launcher/path repair
+- Curated discover catalog
+- `tinypm doctor --fix`
 - `tinypm export-state` and `tinypm import-state`
-- Modular internals under `lib/`
 
 ---
 
@@ -97,7 +88,7 @@ git clone https://github.com/AnimatedGTVR/TinyPM.git
 cd TinyPM
 ```
 
-Run the installer:
+Install TinyPM V3:
 
 ```bash
 chmod +x install.sh
@@ -112,28 +103,22 @@ TINYPM_FLAVOR=abora ./install.sh
 
 The installer will:
 
-- show the TinyPM logo
-- optionally apply a flavor such as `abora`
-- detect your native package manager
-- let you choose `apt`, `xbps`, `pacman`, `dnf`, `zypper`, `apk`, `emerge`, or `seed`
 - install TinyPM into `~/.tinypm`
-- create command links in `~/.local/bin`
-- add `syspm` for native package-manager actions
+- link commands into `~/.local/bin`
+- expose `tinypm`, `tiny`, `grab`, `syspm`, and `version`
+- detect your native package manager automatically if one exists
+- prefer `nix` automatically on NixOS-based systems like Abora
 
 Then test it:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 hash -r
-"$HOME/.tinypm/bin/tinypm" help
-"$HOME/.tinypm/bin/tinypm" selftest
-"$HOME/.tinypm/bin/tinypm" doctor --fix
+grab firefox
+tinypm doctor
 tiny --version
 syspm update
-seed store
 ```
-
-If you install with a flavor, TinyPM keeps the `tinypm` command name and only changes branding, catalog defaults, and desktop metadata.
 
 ---
 
@@ -142,13 +127,15 @@ If you install with a flavor, TinyPM keeps the `tinypm` command name and only ch
 ### Main
 
 ```bash
-tinypm install [-f|-s|-n|--seed|--brew|--nix] <package>
-tinypm search [-f|-s|-n|--seed|--brew|--nix] <query>
-tinypm remove [-f|-s|-n|--seed|--brew|--nix] <package>
-tinypm list [-f|-s|-n|--seed|--brew|--nix]
-tinypm start [-f|-s|--seed] <app>
-tinypm update [-f|-s|-n|--seed|--brew|--nix]
-tinypm selftest
+grab [-f|-s|-n] <package>
+tinypm install [-f|-s|-n|--brew|--nix] <package>
+tinypm search [-f|-s|-n|--brew|--nix] <query>
+tinypm remove [-f|-s|-n|--brew|--nix] <package>
+tinypm list [-f|-s|-n|--brew|--nix]
+tinypm update [-f|-s|-n|--brew|--nix]
+tinypm info <package>
+tinypm managed
+tinypm discover [query]
 tinypm doctor [--fix]
 tinypm export-state [file]
 tinypm import-state <file>
@@ -158,85 +145,72 @@ tinypm version
 Quick forms:
 
 ```bash
-tinypm i -f org.blender.Blender
+tinypm i firefox
 tinypm s blender
-tinypm r -n htop
+tinypm r htop
 tinypm u
 tinypm ls
 tinypm v
 ```
 
-### Shortcuts
+### Native only
 
 ```bash
-ainstall [-f|-s|-n|--seed|--brew|--nix] <package>
-search [-f|-s|-n|--seed|--brew|--nix] <query>
-term [-f|-s|-n|--seed|--brew|--nix] <package>
-start [-f|-s|--seed] <app>
-supdate [-f|-s|-n|--seed|--brew|--nix]
-tiny --version
+syspm install <package>
+syspm search <query>
+syspm remove <package>
+syspm list
 syspm update
-```
-
-### Seed
-
-```bash
-seed store [query]
-seed search [query]
-seed install <package>
-seed remove <package>
-seed list
-seed run <package>
-seed update [stable|main|vX.Y.Z[-suffix]]
-seed rollback [backup.tar.gz]
-seed about
-seedstore [query]
-```
-
-Examples:
-
-```bash
-seed store
-seed search blender
-seed install blender
-seed install yq
-tinypm install -f org.blender.Blender
-tinypm install -n htop
-syspm update
+syspm version
 ```
 
 ---
 
-## Store Notes
+## Backend Rules
 
-`discover` and `seed store` are curated built-in catalogs.
+Parcel supports these native package managers:
 
-They are larger than before, but they are still not every package in every Linux repository. For full provider search, use the real backends through TinyPM:
+- `apt`
+- `dnf`
+- `pacman`
+- `xbps`
+- `zypper`
+- `apk`
+- `emerge`
+- `brew`
+- `nix`
 
-```bash
-tinypm search -n <query>
-tinypm search -f <query>
-tinypm search -s <query>
-```
+Abora note:
+
+- Abora is NixOS-based, so Parcel prefers `nix` as the native backend on Abora installs
+- `syspm` on Abora routes through the native Nix path
+
+Flags:
+
+- `-n`, `--native` forces the native package manager
+- `-f`, `--flatpak` forces Flatpak
+- `-s`, `--snap` forces Snap
+
+If you run `grab firefox` and more than one backend is available, TinyPM V3 asks which one to use.
 
 ---
 
-## Architecture
+## Project Shape
 
-TinyPM is modular by design.
+TinyPM V3 is intentionally smaller than the previous release.
 
-- `tinypm`: main entrypoint
-- `tiny`: short alias to the same entrypoint
-- `syspm`: native package-manager wrapper
-- `seed`: Seed storefront and wrapper
-- `lib/core/`: parsing, actions, app flow, UI, state, config, doctor output
-- `lib/providers/`: backend logic
-- `share/`: catalog and ASCII/logo assets
+- `tinypm`: main CLI
+- `grab`: install-first entrypoint
+- `syspm`: native-only wrapper
+- `version`: version and system report
+- `lib/core/`: config, args, actions, state, doctor, UI
+- `lib/providers/`: native, Flatpak, Snap
+- `share/`: logo and curated catalog
 
 ---
 
 ## License
 
-TinyPM is licensed under the GNU General Public License v3.0.
+TinyPM V3 is licensed under the GNU General Public License v3.0.
 
 See [LICENSE](LICENSE) for the full text.

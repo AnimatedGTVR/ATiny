@@ -8,5 +8,3 @@ OBS Studio	Creator	flatpak	com.obsproject.Studio	Streaming and recording
 Discord	Social	flatpak	com.discordapp.Discord	Voice and chat client
 Thunderbird	Productivity	flatpak	org.mozilla.Thunderbird	Mail client
 Kate	Development	flatpak	org.kde.kate	Text editor
-yq	Development	seed	yq	Portable YAML processor
-fx	Development	seed	fx	Terminal JSON viewer

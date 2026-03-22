@@ -21,12 +21,10 @@ for module in \
     "$script_dir/lib/core/common.sh" \
     "$script_dir/lib/core/state.sh" \
     "$script_dir/lib/core/ui.sh" \
-    "$script_dir/lib/core/app.sh" \
     "$script_dir/lib/core/apps.sh" \
     "$script_dir/lib/providers/flatpak.sh" \
     "$script_dir/lib/providers/snap.sh" \
     "$script_dir/lib/providers/apt.sh" \
-    "$script_dir/lib/providers/seed.sh" \
     "$script_dir/lib/core/actions.sh" \
     "$script_dir/lib/core/doctor.sh" \
     "$script_dir/lib/core/args.sh"
@@ -69,11 +67,8 @@ case "$action" in
     discover)
         discover_apps "${package:-}"
         ;;
-    app)
-        app_ui
-        ;;
     run|start)
-        [[ -n "$package" ]] || die "run requires an app id, snap name, or seed package"
+        [[ -n "$package" ]] || die "run requires an app id or snap/flatpak target"
         run_pkg "$package" "$provider"
         ;;
     update)

@@ -10,7 +10,6 @@ install_pkg() {
     case "$provider" in
         flatpak) install_flatpak "$package" ;;
         snap) snap_install "$package" ;;
-        seed) seed_install "$package" ;;
         *)
             if is_native_provider "$provider"; then
                 apt_install "$package" "$provider"
@@ -38,10 +37,6 @@ search_pkg() {
             ensure_provider_available snap
             snap_search "$query"
             ;;
-        seed)
-            ensure_provider_available seed
-            seed_search "$query"
-            ;;
         auto)
             ensure_provider_available auto
             native_pm="$(detect_native_pm 2>/dev/null || true)"
@@ -61,11 +56,6 @@ search_pkg() {
                 echo "== Snap =="
                 snap_search "$query"
                 printed=1
-            fi
-            if seed_has_recipes; then
-                [[ "$printed" -eq 1 ]] && echo
-                echo "== Seed =="
-                seed_search "$query"
             fi
             ;;
         *)
@@ -92,7 +82,6 @@ remove_pkg() {
     case "$provider" in
         flatpak) flatpak_remove "$package" ;;
         snap) snap_remove "$package" ;;
-        seed) seed_remove "$package" ;;
         *)
             if is_native_provider "$provider"; then
                 apt_remove "$package" "$provider"
@@ -119,10 +108,6 @@ list_pkgs() {
             ensure_provider_available snap
             snap_list
             ;;
-        seed)
-            ensure_provider_available seed
-            seed_list
-            ;;
         auto)
             ensure_provider_available auto
             native_pm="$(detect_native_pm 2>/dev/null || true)"
@@ -142,11 +127,6 @@ list_pkgs() {
                 echo "== Snap =="
                 snap_list
                 printed=1
-            fi
-            if [[ -d "$seed_bin_dir" ]]; then
-                [[ "$printed" -eq 1 ]] && echo
-                echo "== Seed =="
-                seed_list
             fi
             ;;
         *)
@@ -173,7 +153,6 @@ run_pkg() {
     case "$provider" in
         flatpak) flatpak_run "$package" ;;
         snap) snap_run "$package" ;;
-        seed) seed_run "$package" ;;
     esac
 }
 
@@ -191,10 +170,6 @@ update_pkgs() {
             ensure_provider_available snap
             snap_update
             ;;
-        seed)
-            ensure_provider_available seed
-            seed_update
-            ;;
         auto)
             ensure_provider_available auto
             native_pm="$(detect_native_pm 2>/dev/null || true)"
@@ -206,9 +181,6 @@ update_pkgs() {
             fi
             if backend_has_cmd snap; then
                 snap_update
-            fi
-            if [[ -d "$seed_packages_dir" ]]; then
-                seed_update
             fi
             ;;
         *)
@@ -249,10 +221,6 @@ info_pkg() {
     if [[ -n "$native_pm" ]] && package_in_apt "$package" "$native_pm"; then
         available_providers="${available_providers} $native_pm"
     fi
-    if package_in_seed "$package" 2>/dev/null; then
-        available_providers="${available_providers} seed"
-    fi
-
     echo "Package: $package"
     echo "Tracked by TinyPM: $tracked_provider"
     if [[ "$tracked_provider" != "untracked" ]]; then

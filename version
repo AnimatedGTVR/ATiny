@@ -17,26 +17,13 @@ script_dir="$(cd -P "$(dirname "$script_path")" && pwd)"
 . "$script_dir/lib/core/common.sh"
 . "$script_dir/lib/core/state.sh"
 . "$script_dir/lib/core/apps.sh"
-. "$script_dir/lib/providers/seed.sh"
 
-flavor_name="TinyPM"
-flavor_label=""
 flavor_key="$(tinypm_active_flavor)"
 logo_file="$(tinypm_logo_file)"
-
-if [[ -r "$script_dir/flavors/$flavor_key/flavor.conf" ]]; then
-    . "$script_dir/flavors/$flavor_key/flavor.conf"
-    flavor_name="${FLAVOR_NAME:-TinyPM}"
-fi
-
-if [[ "$flavor_key" == "abora" ]]; then
-    flavor_label=""
-fi
 
 flatpak_status="missing"
 snap_status="missing"
 native_status="missing"
-seed_status="missing"
 os_name="$(backend_os_name)"
 kernel_name="$(backend_run uname -r 2>/dev/null || echo unknown)"
 host_name="$(backend_run hostname 2>/dev/null || echo unknown)"
@@ -66,19 +53,12 @@ if [[ "$native_pm" != "none" ]]; then
     native_status="$(native_pm_label "$native_pm")"
 fi
 
-if seed_has_recipes; then
-    seed_status="available"
-fi
-
 cat "$logo_file"
 printf '\n'
-
-if [[ "$flavor_key" == "abora" ]]; then
-    printf 'TinyPM.2.0.2.Aedition (abora)\n'
-else
-    printf '%s v2.0.2%s\n' "$flavor_name" "$flavor_label"
-fi
+printf '%s\n' "$(tinypm_version_label)"
 printf '%s\n' '------------------------------------------------------------'
+printf '  %-16s %s\n' 'System' "$tinypm_system_name"
+printf '  %-16s %s\n' 'Engine' "$tinypm_engine_name"
 printf '  %-16s %s\n' 'Host' "$host_name"
 printf '  %-16s %s\n' 'OS' "$os_name"
 printf '  %-16s %s\n' 'Kernel' "$kernel_name"
@@ -89,7 +69,7 @@ printf '  %-16s %s\n' 'Uptime' "$uptime_text"
 printf '  %-16s %s\n' 'Backend Mode' "$backend_mode"
 printf '  %-16s %s\n' 'Auth Mode' "$auth_mode"
 printf '  %-16s %s\n' 'Native PM' "$native_pm"
-printf '  %-16s %s\n' 'Backends' "native=$native_status flatpak=$flatpak_status snap=$snap_status seed=$seed_status"
+printf '  %-16s %s\n' 'Backends' "native=$native_status flatpak=$flatpak_status snap=$snap_status"
 printf '  %-16s %s\n' 'Commands' "$command_count"
 printf '  %-16s %s\n' 'Desktop Apps' "$app_total"
 printf '  %-16s %s\n' 'Tracked' "$tracked_count"

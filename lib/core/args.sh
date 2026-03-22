@@ -5,7 +5,7 @@ doctor_fix=0
 
 dispatch_multicall() {
     case "$prog_name" in
-        ainstall) echo "install auto" ;;
+        grab) echo "install auto" ;;
         search) echo "search auto" ;;
         term) echo "remove auto" ;;
         start) echo "run auto" ;;
@@ -35,7 +35,7 @@ parse_action_args() {
                 esac
             done
             ;;
-        selftest|managed|apps|app|help|version|-v|--version)
+        selftest|managed|apps|help|version|-v|--version)
             [[ $# -eq 0 ]] || die "too many arguments"
             ;;
         list|update)
@@ -79,6 +79,19 @@ parse_action_args() {
 }
 
 init_cli_context() {
+    if [[ "$prog_name" == "grab" ]]; then
+        case "${1:-}" in
+            ""|help|-h|--help) action="help" ;;
+            version|-v|--version) action="version" ;;
+            *) action="install" ;;
+        esac
+        if [[ "$action" != "install" ]]; then
+            shift || true
+        fi
+        parse_action_args "auto" "$@"
+        return
+    fi
+
     if [[ "$prog_name" == "tiny" || "$prog_name" == "tinypm" ]]; then
         action="${1:-help}"
         case "$action" in

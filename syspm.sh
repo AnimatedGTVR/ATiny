@@ -22,6 +22,7 @@ fi
 print_help() {
   cat <<'EOH'
 syspm routes TinyPM through the native system package manager.
+On Abora, that native path is typically Nix.
 
 Usage:
   syspm update
